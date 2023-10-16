@@ -38,6 +38,7 @@ TFT_eSprite text = TFT_eSprite(&tft);
 TFT_eSprite text2 = TFT_eSprite(&tft);
 TFT_eSprite text3 = TFT_eSprite(&tft);
 TFT_eSprite text4 = TFT_eSprite(&tft);
+TFT_eSprite img2 = TFT_eSprite(&tft);
 
 
 float error = 0.0;                  // Temperature compensation error
@@ -98,7 +99,7 @@ float maxDamper = 100.0;  // Sets maximum damper setting
 float minDamper = 0.0;    // Sets minimum damper setting
 float zeroDamper = 0.0;   // Sets zero damper setting - note that stove allows some amount of airflow at zero damper
 
-
+int y = 0;
 
 String messageDamp;    // Initialize message for damper 2
 String messageinfo;    // Initialize message for damper 3
@@ -393,8 +394,14 @@ else
     text2.createSprite(100, 50);
     text2.setTextColor(10,TFT_BLACK);
   
+  img2.createSprite(17, 100);
   
 bckg.pushImage(0,0,320,240,arrow);
+
+
+y=2 * errP + kI * errI + kD * errD;
+img2.fillRect(0,0,17,y,TFT_WHITE),
+img2.pushToSprite(&bckg,73,30, TFT_BLACK);
 
  text.setFreeFont(&FreeSansBold42pt7b);
 text.drawString(String(temperature),0,0,GFXFF);
@@ -426,6 +433,7 @@ text2.deleteSprite();
 text3.deleteSprite();
 text4.deleteSprite(); 
 img.deleteSprite();
+img2.deleteSprite();
 
     // Drive servo and print damper position to the lcd
 diff = damper - oldDamper;
