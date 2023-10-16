@@ -1,0 +1,5 @@
+{
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "C:/Users/krx86/Documents/PlatformIO/Projects/230617-223736-esp32-s3-devkitc-1/.pio/libdeps/esp32-s3-devkitc-1/Unity",
+    "C_Cpp.errorSquiggles": "disabled"
+}
