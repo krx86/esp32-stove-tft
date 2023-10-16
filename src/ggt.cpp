@@ -29,7 +29,7 @@ const char* password = "BTT6F1EA171";
 
 OneWire oneWire(6);
 DallasTemperature ds(&oneWire);
-DeviceAddress sensor1 = {0x28, 0xA6, 0xE4, 0x49, 0xF6, 0xF2, 0x3C, 0xF};
+DeviceAddress sensor1 = {0x28, 0xFC, 0x70, 0x96, 0xF0, 0x01, 0x3C, 0xC0};
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
 TFT_eSprite img = TFT_eSprite(&tft);
