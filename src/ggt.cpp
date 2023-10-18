@@ -250,7 +250,6 @@ esp_sleep_enable_ext0_wakeup(GPIO_NUM_15,0);
 
 ArduinoOTA.handle();
 
-ds.requestTemperatures();
 
   unsigned long currentMillis = millis();
 
