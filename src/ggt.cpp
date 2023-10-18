@@ -17,9 +17,13 @@
 #include "FreeSansBold42pt7b.h"
 #include <kluda.h>
 
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <WebSerial.h>
+
 #define GFXFF 1
 
-
+AsyncWebServer server(80);
 
 const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
@@ -125,6 +129,19 @@ bool WoodFilled(int CurrentTemp) {
    }
  }
 
+#define EXE_INTERVAL 3000
+
+unsigned long lastExecutedMillis = 0;
+
+void recvMsg(uint8_t *data, size_t len){
+  WebSerial.println("Received Data...");
+  String d = "";
+  for(int i=0; i < len; i++){
+    d += char(data[i]);
+  }
+  WebSerial.println(d);
+  
+}
 
 void setup(void) 
 {
@@ -141,6 +158,13 @@ void setup(void)
     ESP.restart();
   }
 
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+  // WebSerial is accessible at "<IP Address>/webserial" in browser
+  WebSerial.begin(&server);
+  WebSerial.msgCallback(recvMsg);
+  server.begin();
+  
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
 
@@ -208,6 +232,7 @@ void setup(void)
     bckg.createSprite(320, 240);
     
     bckg.setSwapBytes(true);
+ds.begin();
 
    
     delay(50);
@@ -226,7 +251,17 @@ esp_sleep_enable_ext0_wakeup(GPIO_NUM_15,0);
 ArduinoOTA.handle();
 
 ds.requestTemperatures();
-ds.begin();
+
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
+    ds.requestTemperatures();
+    delay(20);
+temperature = ds.getTempC(sensor1);
+    lastExecutedMillis = currentMillis; // save the last executed time
+
+
+  }
 
 pot_raw = analogRead(15); 
 
@@ -237,11 +272,16 @@ pot_raw = analogRead(15);
      {pot = pot +10;}
    
     if (pot_raw>=30 && pot_raw<=50)     //left
-      {digitalWrite(relayPort, LOW);}   
+      {digitalWrite(relayPort, HIGH);
+      delay(90000);}
+      else
+      {digitalWrite(relayPort, LOW);}
+  
+
 
     if (pot_raw>=12 && pot_raw<=25)     //right 
       {
-        digitalWrite(relayPort, HIGH);}
+        digitalWrite(relayPort, LOW);}
   
          
     if(digitalRead(relayPort)==HIGH)
@@ -254,7 +294,10 @@ pot_raw = analogRead(15);
     if (pot_raw>=140 && pot_raw<=180)
       { ESP.restart(); }
 
-temperature = ds.getTempC(sensor1);          // read thermocouple temp in C
+
+        
+    
+         // read thermocouple temp in C
 
  
   if (temperature >90)
@@ -271,12 +314,12 @@ temperature = ds.getTempC(sensor1);          // read thermocouple temp in C
       if (temperature > 63 && temperature < 100) {kP = 10;}}       
   
   if (pot == 110) {
-      targetTempC = 67; 
-      if (temperature > 0 && temperature < 50) {kP = 2;}
-      if (temperature > 51 && temperature < 55) {kP = 4;}
+      targetTempC = 69; 
+      if (temperature > 0 && temperature < 50) {kP = 3;}
+      if (temperature > 51 && temperature < 55) {kP = 6;}
       if (temperature > 56 && temperature < 60) {kP = 7;}
       if (temperature > 61 && temperature < 64) {kP = 9;}
-      if (temperature > 65 && temperature < 100) {kP = 11;}}
+      if (temperature > 65 && temperature < 100) {kP = 29;}}
        
   if (pot == 120) {
       targetTempC = 73; 
@@ -302,6 +345,13 @@ temperature = ds.getTempC(sensor1);          // read thermocouple temp in C
       if (temperature > 69 && temperature < 73) {kP = 8;}
       if (temperature > 76 && temperature < 100) {kP = 9;}}
       
+        if (pot == 150) {
+      targetTempC =63; 
+      if (temperature > 0 && temperature < 40) {kP = 3;}
+      if (temperature > 41 && temperature < 55) {kP = 7;}
+      if (temperature > 56 && temperature < 59) {kP = 12;}
+      if (temperature > 60 && temperature < 100) {kP = 25;}
+      }
 
        
     if (pot <= potRelMax ) {  
@@ -399,7 +449,7 @@ else
 bckg.pushImage(0,0,320,240,arrow);
 
 
-y=2 * errP + kI * errI + kD * errD;
+y=105-temperature;
 img2.fillRect(0,0,17,y,TFT_WHITE),
 img2.pushToSprite(&bckg,73,30, TFT_BLACK);
 
@@ -466,6 +516,7 @@ diff = damper - oldDamper;
         // Regulator model data via serial output
     // Output: tempC, tempF, damper%, damper(calculated), damperP, damperI, damperD, errP, errI, errD
     //Serial.println(pot_raw);
+    //WebSerial.print(currentMillis);
     
   /*   
         
@@ -499,7 +550,7 @@ if(sleep_==true)
     // Toggle oddLoop that controls display message on line 2
 oddLoop = !oddLoop;
     // Delay between loop cycles
-    delay(20);
+    delay(50);
 
       
 }
