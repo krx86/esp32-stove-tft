@@ -17,19 +17,16 @@
 #include "FreeSansBold42pt7b.h"
 #include <kluda.h>
 
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <WebSerial.h>
+#include <WebServer.h>
 
 #define GFXFF 1
 
-AsyncWebServer server(80);
 
 const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
 const char* password = "BTT6F1EA171";
 
-
+WebServer server(80);   
 
 OneWire oneWire(6);
 DallasTemperature ds(&oneWire);
@@ -46,7 +43,7 @@ TFT_eSprite img2 = TFT_eSprite(&tft);
 
 
 float error = 0.0;                  // Temperature compensation error
-
+int t=0;
 int x=20;
 // Buzzer setup variables:
 int buzzerPort = 2;               // Buzzer port id
@@ -73,7 +70,7 @@ float servoAngle = 35;  // adjust value to define total angular travel of servo 
 
 
 int temperature = 0;       // initialize temperature variable for C
-int temperatureMin = 47; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
+int temperatureMin = 45; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
 int targetTempC = 0;   // the target temperature as measured by the thermocouple (135 C = 275 F)
 float errP = 0.0;          // initialize the proportional term
 float errD = 0.0;          // initialize the derivative term
@@ -85,8 +82,8 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 100000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 155000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 150000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 185000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
 int pot = 120;
@@ -133,15 +130,46 @@ bool WoodFilled(int CurrentTemp) {
 
 unsigned long lastExecutedMillis = 0;
 
-void recvMsg(uint8_t *data, size_t len){
-  WebSerial.println("Received Data...");
-  String d = "";
-  for(int i=0; i < len; i++){
-    d += char(data[i]);
-  }
-  WebSerial.println(d);
-  
+
+ 
+
+
+void handle_NotFound(){
+  server.send(404, "text/plain", "Not found");
 }
+
+String SendHTML(int temperature ){
+  String ptr = "<!DOCTYPE html> <html>\n";
+  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+  ptr +="<meta http-equiv='refresh' content='5'> ";
+  ptr +="<title>ESP32 Stove Monitor</title>\n";
+  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
+  ptr +="p {font-size: 24px;color: #444444;margin-bottom: 10px;}\n";
+  ptr +="</style>\n";
+  ptr +="</head>\n";
+  ptr +="<body>\n";
+  ptr +="<div id=\"webpage\">\n";
+  ptr +="<h1>ESP32 Temperature Monitor</h1>\n";
+  ptr +="<p>Water Temperature: ";
+  ptr +=temperature;
+  ptr +="&deg;C</p>";
+  ptr +="<p>Target Temperature: ";
+  ptr +=targetTempC;
+  ptr +="&deg;C</p>";
+  ptr +="<p>Damper Open: ";
+  ptr +=damper;
+  ptr +="%</p>";
+  ptr +="</div>\n";
+  ptr +="</body>\n";
+  ptr +="</html>\n";
+  return ptr;
+}
+
+void handle_OnConnect() {
+  ds.requestTemperatures();
+  temperature = ds.getTempC(sensor1); // Gets the values of the temperature
+    server.send(200, "text/html", SendHTML(temperature));}
 
 void setup(void) 
 {
@@ -160,10 +188,7 @@ void setup(void)
 
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
-  // WebSerial is accessible at "<IP Address>/webserial" in browser
-  WebSerial.begin(&server);
-  WebSerial.msgCallback(recvMsg);
-  server.begin();
+ 
   
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
@@ -206,6 +231,8 @@ void setup(void)
 
   ArduinoOTA.begin();
 
+
+
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -236,14 +263,18 @@ ds.begin();
 
    
     delay(50);
-    
+      server.on("/", handle_OnConnect);
+  server.onNotFound(handle_NotFound);
+
+  server.begin();
+  Serial.println("HTTP server started");
    
 }
 
 /// @brief 
 void loop() {
 
-
+server.handleClient();
 esp_bluedroid_disable;
 
 esp_sleep_enable_ext0_wakeup(GPIO_NUM_15,0);
@@ -255,20 +286,24 @@ ArduinoOTA.handle();
 
   if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
     ds.requestTemperatures();
-    delay(20);
-temperature = ds.getTempC(sensor1);
-    lastExecutedMillis = currentMillis; // save the last executed time
-
-
+    temperature = ds.getTempC(sensor1);
+     // save the last executed time
+      //lastExecutedMillis = currentMillis; 
   }
+
+
+  
+     
 
 pot_raw = analogRead(15); 
 
     if (pot_raw>=70 && pot_raw<=85)     //down
-    {pot = pot -10;}
+    {pot = pot -10;
+    delay(20);}
     
      if (pot_raw>=0 &&  pot_raw<=10)     //up
-     {pot = pot +10;}
+     {pot = pot +10;
+     delay(20);}
    
     if (pot_raw>=30 && pot_raw<=50)     //left
       {digitalWrite(relayPort, HIGH);
@@ -363,7 +398,10 @@ pot_raw = analogRead(15);
       messageDamp = "Manual";} // set damper output message, manual
     
     else 
-    { if (errI < endTrigger) {
+    { 
+      if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
+      
+      if (errI < endTrigger) {
         // Automatic PID regulation
         errP = targetTempC - temperature;  // set proportional term
         errI = errI + errP;                // update integral term
@@ -408,7 +446,11 @@ pot_raw = analogRead(15);
 
       if (WoodFilled(temperature)) {
           errI = 0;  // reset integral term after wood refill
-        }}}
+        }}
+        
+        lastExecutedMillis = currentMillis;
+        }
+    }
  
 
 text4.createSprite(130, 40);
@@ -515,7 +557,6 @@ diff = damper - oldDamper;
         // Regulator model data via serial output
     // Output: tempC, tempF, damper%, damper(calculated), damperP, damperI, damperD, errP, errI, errD
     //Serial.println(pot_raw);
-    //WebSerial.print(currentMillis);
     
   /*   
         
@@ -549,7 +590,10 @@ if(sleep_==true)
     // Toggle oddLoop that controls display message on line 2
 oddLoop = !oddLoop;
     // Delay between loop cycles
-    delay(50);
+    delay(100);
 
-      
+  
 }
+
+
+
