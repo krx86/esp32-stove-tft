@@ -82,8 +82,8 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 150000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 185000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 100000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 155000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
 int pot = 120;
