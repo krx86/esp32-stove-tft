@@ -18,6 +18,8 @@
 #include <kluda.h>
 
 #include <WebServer.h>
+#include "ESPTelnet.h"
+#define SERIAL_SPEED    115200
 
 #define GFXFF 1
 
@@ -26,7 +28,10 @@ const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
 const char* password = "BTT6F1EA171";
 
-WebServer server(80);   
+ESPTelnet telnet;
+IPAddress ip;
+uint16_t  port = 23;
+  
 
 OneWire oneWire(6);
 DallasTemperature ds(&oneWire);
@@ -82,8 +87,8 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 100000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 155000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 70000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 105000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
 int pot = 120;
@@ -101,6 +106,10 @@ float minDamper = 0.0;    // Sets minimum damper setting
 float zeroDamper = 0.0;   // Sets zero damper setting - note that stove allows some amount of airflow at zero damper
 
 int y = 0;
+int z = 0;
+int kludas = 0;
+
+
 
 String messageDamp;    // Initialize message for damper 2
 String messageinfo;    // Initialize message for damper 3
@@ -130,52 +139,79 @@ bool WoodFilled(int CurrentTemp) {
 
 unsigned long lastExecutedMillis = 0;
 
+void setupSerial(long speed, String msg = "") {
+  Serial.begin(speed);
+  while (!Serial) {
+  }
+  delay(200);  
+  Serial.println();
+  Serial.println();
+  if (msg != "") Serial.println(msg);
+}
 
+void onTelnetConnect(String ip) {
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" connected");
+  
+  telnet.println("\nWelcome " + telnet.getIP());
+  telnet.println("(Use ^] + q  to disconnect.)");
+}
+
+void onTelnetDisconnect(String ip) {
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" disconnected");
+}
+
+void onTelnetReconnect(String ip) {
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" reconnected");
+}
+
+void onTelnetConnectionAttempt(String ip) {
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" tried to connected");
+}
+
+void onTelnetInput(String str) {
+  // checks for a certain command
+  if (str == "ping") {
+    telnet.println("> pong");
+    Serial.println("- Telnet: pong");
+  // disconnect the client
+  } else if (str == "bye") {
+    telnet.println("> disconnecting you...");
+    telnet.disconnectClient();
+    }
+  }
+
+void setupTelnet() {  
+  // passing on functions for various telnet events
+  telnet.onConnect(onTelnetConnect);
+  telnet.onConnectionAttempt(onTelnetConnectionAttempt);
+  telnet.onReconnect(onTelnetReconnect);
+  telnet.onDisconnect(onTelnetDisconnect);
+  telnet.onInputReceived(onTelnetInput);
+
+  Serial.print("- Telnet: ");
+  if (telnet.begin(port)) {
+    Serial.println("running");
+  } else {
+    Serial.println("error.");
+    
+  }
+}
  
-
-
-void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
-}
-
-String SendHTML(int temperature ){
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr +="<meta http-equiv='refresh' content='5'> ";
-  ptr +="<title>ESP32 Stove Monitor</title>\n";
-  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
-  ptr +="p {font-size: 24px;color: #444444;margin-bottom: 10px;}\n";
-  ptr +="</style>\n";
-  ptr +="</head>\n";
-  ptr +="<body>\n";
-  ptr +="<div id=\"webpage\">\n";
-  ptr +="<h1>ESP32 Temperature Monitor</h1>\n";
-  ptr +="<p>Water Temperature: ";
-  ptr +=temperature;
-  ptr +="&deg;C</p>";
-  ptr +="<p>Target Temperature: ";
-  ptr +=targetTempC;
-  ptr +="&deg;C</p>";
-  ptr +="<p>Damper Open: ";
-  ptr +=damper;
-  ptr +="%</p>";
-  ptr +="</div>\n";
-  ptr +="</body>\n";
-  ptr +="</html>\n";
-  return ptr;
-}
-
-void handle_OnConnect() {
-  ds.requestTemperatures();
-  temperature = ds.getTempC(sensor1); // Gets the values of the temperature
-    server.send(200, "text/html", SendHTML(temperature));}
 
 void setup(void) 
 {
    
-  
-    Serial.begin(115200);  // opens serial port, sets data rate to 9600 bps
+  setupSerial(SERIAL_SPEED, "Telnet Test");
+
+   
 
      Serial.println("Booting");
   WiFi.mode(WIFI_STA);
@@ -263,18 +299,20 @@ ds.begin();
 
    
     delay(50);
-      server.on("/", handle_OnConnect);
-  server.onNotFound(handle_NotFound);
-
-  server.begin();
-  Serial.println("HTTP server started");
-   
+       setupTelnet();
+       server.setNoDelay(true);
 }
 
 /// @brief 
 void loop() {
 
-server.handleClient();
+telnet.loop();
+  telnet.println("dapers:" + String(damper) +" |  " + "temperatura:" + String(temperature) + " | " + "kludas:" + String(kludas));
+
+  // send serial input to telnet as output
+  if (Serial.available()) {
+    telnet.print(Serial.read());
+  }
 esp_bluedroid_disable;
 
 esp_sleep_enable_ext0_wakeup(GPIO_NUM_15,0);
@@ -285,13 +323,19 @@ ArduinoOTA.handle();
   unsigned long currentMillis = millis();
 
   if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
+    
     ds.requestTemperatures();
     temperature = ds.getTempC(sensor1);
      // save the last executed time
       //lastExecutedMillis = currentMillis; 
   }
 
-
+if (temperature < 0){
+    kludas++;
+    temperature = -1; 
+ }
+ else
+ {kludas = 0;}
   
      
 
@@ -400,6 +444,7 @@ pot_raw = analogRead(15);
     else 
     { 
       if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
+      z=currentMillis - lastExecutedMillis;
       
       if (errI < endTrigger) {
         // Automatic PID regulation
@@ -454,20 +499,19 @@ pot_raw = analogRead(15);
  
 
 text4.createSprite(130, 40);
-  if (temperature <0)
+  if (kludas > 20)
     {
       img.createSprite(200, 200);
       img.pushImage(0,0,200,200,kluda);
       text4.setTextColor(TFT_GREEN,TFT_BLACK);
 
-temperature = -1;
 messageDamp = "Error"; 
  
   tone(buzzerPort, buzzerRefillFrequency);
     delay(buzzerRefillDelay);
     noTone(buzzerPort);
     delay(buzzerRefillDelay);
-    temperature = -1;  
+ 
     }  
 else
   {text4.setTextColor(10,TFT_BLACK);}
@@ -552,7 +596,6 @@ diff = damper - oldDamper;
       myservo.detach();
       oldPot = pot;
       oldDamper =  damper;}
-  //Serial.print(String(damper));
 
         // Regulator model data via serial output
     // Output: tempC, tempF, damper%, damper(calculated), damperP, damperI, damperD, errP, errI, errD
