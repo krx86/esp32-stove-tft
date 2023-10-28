@@ -28,6 +28,7 @@ const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
 const char* password = "BTT6F1EA171";
 
+WebServer server(80);   
 ESPTelnet telnet;
 IPAddress ip;
 uint16_t  port = 23;
@@ -87,8 +88,8 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 70000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 105000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 50000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 75000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
 int pot = 120;
@@ -135,9 +136,46 @@ bool WoodFilled(int CurrentTemp) {
    }
  }
 
-#define EXE_INTERVAL 3000
+#define EXE_INTERVAL 5000
 
 unsigned long lastExecutedMillis = 0;
+
+
+ 
+
+
+void handle_NotFound(){
+  server.send(404, "text/plain", "Not found");
+}
+
+String SendHTML(int temperature ){
+  String ptr = "<!DOCTYPE html> <html>\n";
+  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+  ptr +="<meta http-equiv='refresh' content='5'> ";
+  ptr +="<title>ESP32 Stove Monitor</title>\n";
+  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
+  ptr +="p {font-size: 24px;color: #444444;margin-bottom: 10px;}\n";
+  ptr +="</style>\n";
+  ptr +="</head>\n";
+  ptr +="<body>\n";
+  ptr +="<div id=\"webpage\">\n";
+  ptr +="<h1>ESP32 Temperature Monitor</h1>\n";
+  ptr +="<p>Water Temperature: ";
+  ptr +=temperature;
+  ptr +="&deg;C</p>";
+  ptr +="<p>Target Temperature: ";
+  ptr +=targetTempC;
+  ptr +="&deg;C</p>";
+  ptr +="<p>Damper Open: ";
+  ptr +=damper;
+  ptr +="%</p>";
+  ptr +="</div>\n";
+  ptr +="</body>\n";
+  ptr +="</html>\n";
+  return ptr;
+}
+
 
 void setupSerial(long speed, String msg = "") {
   Serial.begin(speed);
@@ -205,6 +243,11 @@ void setupTelnet() {
   }
 }
  
+void handle_OnConnect() {
+  //ds.requestTemperatures();
+  //temperature = ds.getTempC(sensor1); // Gets the values of the temperature
+    server.send(200, "text/html", SendHTML(temperature));}
+
 
 void setup(void) 
 {
@@ -300,14 +343,22 @@ ds.begin();
    
     delay(50);
        setupTelnet();
-       server.setNoDelay(true);
+
+          server.on("/", handle_OnConnect);
+  server.onNotFound(handle_NotFound);
+
+  server.begin();
+  Serial.println("HTTP server started");
+   
+
 }
 
 /// @brief 
 void loop() {
+server.handleClient();
+
 
 telnet.loop();
-  telnet.println("dapers:" + String(damper) +" |  " + "temperatura:" + String(temperature) + " | " + "kludas:" + String(kludas));
 
   // send serial input to telnet as output
   if (Serial.available()) {
@@ -327,10 +378,13 @@ ArduinoOTA.handle();
     ds.requestTemperatures();
     temperature = ds.getTempC(sensor1);
      // save the last executed time
-      //lastExecutedMillis = currentMillis; 
+  telnet.println("cikls_sakums:" + String(z) +" |  " + "temperatura:" + String(temperature) + " | " + "kludas:" + String(kludas));
+
   }
 
 if (temperature < 0){
+  ds.requestTemperatures();
+    temperature = ds.getTempC(sensor1);
     kludas++;
     temperature = -1; 
  }
@@ -343,11 +397,11 @@ pot_raw = analogRead(15);
 
     if (pot_raw>=70 && pot_raw<=85)     //down
     {pot = pot -10;
-    delay(20);}
+    delay(500);}
     
      if (pot_raw>=0 &&  pot_raw<=10)     //up
      {pot = pot +10;
-     delay(20);}
+     delay(500);}
    
     if (pot_raw>=30 && pot_raw<=50)     //left
       {digitalWrite(relayPort, HIGH);
@@ -392,7 +446,7 @@ pot_raw = analogRead(15);
       if (temperature > 63 && temperature < 100) {kP = 10;}}       
   
   if (pot == 110) {
-      targetTempC = 69; 
+      targetTempC = 68; 
       if (temperature > 0 && temperature < 50) {kP = 3;}
       if (temperature > 51 && temperature < 55) {kP = 6;}
       if (temperature > 56 && temperature < 60) {kP = 7;}
@@ -424,11 +478,8 @@ pot_raw = analogRead(15);
       if (temperature > 76 && temperature < 100) {kP = 9;}}
       
         if (pot == 150) {
-      targetTempC =63; 
-      if (temperature > 0 && temperature < 40) {kP = 3;}
-      if (temperature > 41 && temperature < 55) {kP = 7;}
-      if (temperature > 56 && temperature < 59) {kP = 12;}
-      if (temperature > 60 && temperature < 100) {kP = 25;}
+      targetTempC =64; 
+      kP = 37;
       }
 
        
@@ -444,7 +495,6 @@ pot_raw = analogRead(15);
     else 
     { 
       if (currentMillis - lastExecutedMillis >= EXE_INTERVAL) {
-      z=currentMillis - lastExecutedMillis;
       
       if (errI < endTrigger) {
         // Automatic PID regulation
@@ -473,6 +523,7 @@ pot_raw = analogRead(15);
             }
           
         }
+        else {messageDamp = "AUTO";}
 
       }
 
@@ -493,10 +544,10 @@ pot_raw = analogRead(15);
           errI = 0;  // reset integral term after wood refill
         }}
         
-        lastExecutedMillis = currentMillis;
         }
     }
  
+  telnet.println("TempHist[0]:" + String(TempHist[0]) +" |  " + "TempHist[9]:" + String(TempHist[9]) + " | " + "kludas:" + String(kludas));
 
 text4.createSprite(130, 40);
   if (kludas > 20)
@@ -571,6 +622,7 @@ img.deleteSprite();
 img2.deleteSprite();
 
     // Drive servo and print damper position to the lcd
+if (currentMillis - lastExecutedMillis >= EXE_INTERVAL){
 diff = damper - oldDamper;
     
   if (abs(diff) > 8) {  // move servo only if damper position change is more than 2%
@@ -633,7 +685,13 @@ if(sleep_==true)
     // Toggle oddLoop that controls display message on line 2
 oddLoop = !oddLoop;
     // Delay between loop cycles
-    delay(100);
+      z=currentMillis - lastExecutedMillis;
+      telnet.println("cikls_beigas:" + String(z) +" |  " + "temperatura:" + String(temperature) + " | " + "kludas:" + String(kludas));
+
+lastExecutedMillis = currentMillis;
+
+    }
+    delay(200);
 
   
 }
