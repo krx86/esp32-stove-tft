@@ -1,6 +1,7 @@
 #include "Arduino.h"
 #include "paramets.h"
 #include "telnet.h"
+
 #include "woodfill.h"
 
 
@@ -52,8 +53,7 @@ void handle_OnConnect() {
 void setup(void) 
 {
    
-  setupSerial;
-
+Serial.begin(115200);
    
 
      Serial.println("Booting");

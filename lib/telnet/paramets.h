@@ -17,6 +17,7 @@
 #include "FreeSansBold42pt7b.h"
 #include "kluda.h"
 #include <WebServer.h>
+#include "telnet.h"
 
 
 
