@@ -1,8 +1,7 @@
 #pragma once
-
 #include "Arduino.h"
 #include "ESPTelnet.h"
-//#include "WiFi.h"
+#include <WiFi.h>
 
 #define SERIAL_SPEED    115200
 

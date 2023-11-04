@@ -1,22 +1,10 @@
 #include "Arduino.h"
 #include "paramets.h"
 #include "telnet.h"
+#include "woodfill.h"
 
 
- //Returns 'true' for refilled and temperature climbing or 'false' for temperature falling
-bool WoodFilled(int CurrentTemp) {
-   for (int i = 9; i > 0; i--) {
-     TempHist[i] = TempHist[i-1];
-   }
-   TempHist[0] = CurrentTemp;
 
-   if (float((TempHist[0]+TempHist[1]+TempHist[2]+TempHist[3]+TempHist[4]+TempHist[5])/5) > float((TempHist[6]+TempHist[7]+TempHist[8])+TempHist[9]+TempHist[10]/5)) {
-     return true;
-  }
-   else {
-    return false;
-   }
- }
 
 
 
@@ -297,7 +285,7 @@ pot_raw = analogRead(15);
         errI = errI + errP;                // update integral term
         errD = errP - errOld;              // update derivative term
         errOld = errP;
-        WoodFilled(temperature);  // Call function that checks if wood is refilled to update array
+        WoodFilled;  // Call function that checks if wood is refilled to update array
 
         // set damper position and limit damper values to physical constraints
         damper = kP * errP + kI * errI + kD * errD;
@@ -312,7 +300,7 @@ pot_raw = analogRead(15);
            
           
 
-        if (WoodFilled(temperature)) {
+        if (WoodFilled) {
             errI = 0;  // reset integral term after wood refill
            
             }
@@ -335,7 +323,7 @@ pot_raw = analogRead(15);
 
         }
 
-      if (WoodFilled(temperature)) {
+      if (WoodFilled) {
           errI = 0;  // reset integral term after wood refill
         }}
         
