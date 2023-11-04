@@ -2,7 +2,7 @@
 #include <arrow.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <ESP32Servo.h>
+
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
 #include <WiFi.h>
@@ -15,8 +15,8 @@
 #include <esp_bt_main.h>
 #include "Free_Fonts.h"
 #include "FreeSansBold42pt7b.h"
-#include <kluda.h>
-
+#include "kluda.h"
+#include "paramets.h"
 #include <WebServer.h>
 #include "ESPTelnet.h"
 #define SERIAL_SPEED    115200
@@ -28,7 +28,7 @@ const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
 const char* password = "BTT6F1EA171";
 
-WebServer server(80);   
+ WebServer server(80);  
 ESPTelnet telnet;
 IPAddress ip;
 uint16_t  port = 23;
@@ -48,67 +48,10 @@ TFT_eSprite text4 = TFT_eSprite(&tft);
 TFT_eSprite img2 = TFT_eSprite(&tft);
 
 
-float error = 0.0;                  // Temperature compensation error
-int t=0;
-int x=20;
-// Buzzer setup variables:
-int buzzerPort = 2;               // Buzzer port id
-int buzzerRefillFrequency = 1900; // Buzzer tone frequency for refill alarm
-int buzzerRefillRepeat = 1;       // Number of refill alarm tones
-int buzzerRefillDelay = 1000;     // Delay between refill alarm tones
-int buzzerEndFrequency = 950;     // Buzzer tone frequency for end of fire damper close alarm
-int buzzerEndRepeat = 1;          // Number of tones for end of fire damper close alarm
-int buzzerEndDelay = 200;        // Delay of tone for end of fire damper close alarm
-byte E;
 
-// Potentiometer variables
-int servoPort = 5;
-int potPort = A3;
-int relayPort = 13;
 
 // Device objects - create servo, therocouple, and lcd objects 
-Servo myservo;
 
-// Servo calibration settings
-float servoCalibration = 1.5;  // 1.0 is neutral cal - adjust value so servo arm drives closed damper when damper variable equals 0 (0%)
-float servoOffset = 29;  // offset angle for servo angle adjustment
-float servoAngle = 35;  // adjust value to define total angular travel of servo so that cable drives damper from fully opened to fully closed
-
-
-int temperature = 0;       // initialize temperature variable for C
-int temperatureMin = 45; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
-int targetTempC = 0;   // the target temperature as measured by the thermocouple (135 C = 275 F)
-float errP = 0.0;          // initialize the proportional term
-float errD = 0.0;          // initialize the derivative term
-float errI = 0.0;          // initialize the integral term
-float errOld = 0.0;        // initialize term used to capture prior cycle ErrP
-int kP = 0;            // Overall gain coefficient and P coefficient of the PID regulation
-float tauI = 1000;         // Integral time constant (sec/repeat)
-float tauD = 5;            // Derivative time constant (sec/reapeat)
-float kI =  kP/tauI;        // I coefficient of the PID regulation
-float kD = kP/tauD;        // D coefficient of the PID regulation
-
-float refillTrigger = 50000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 75000;  // closeTrigger used to close damper at end of combustion
-
-int pot_raw = 0;
-int pot = 120;
-int oldPot = 0;
-float potMax = 1000.0;   // Potentiometer calibration
-int potRelMax = 100;     // Potentiometer value above which the regulator runs in automatic mode
-
-int difft = 0;
-int angle = 0;
-int damper = 0;
-int oldDamper = 0;
-int diff = 0;
-float maxDamper = 100.0;  // Sets maximum damper setting
-float minDamper = 0.0;    // Sets minimum damper setting
-float zeroDamper = 0.0;   // Sets zero damper setting - note that stove allows some amount of airflow at zero damper
-
-int y = 0;
-int z = 0;
-int kludas = 0;
 
 
 
@@ -141,13 +84,13 @@ bool WoodFilled(int CurrentTemp) {
 unsigned long lastExecutedMillis = 0;
 
 
- 
+ //void handle_NotFound();
 
 
 void handle_NotFound(){
   server.send(404, "text/plain", "Not found");
 }
-
+ 
 String SendHTML(int temperature ){
   String ptr = "<!DOCTYPE html> <html>\n";
   ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
@@ -241,12 +184,12 @@ void setupTelnet() {
     Serial.println("error.");
     
   }
-}
+} 
  
 void handle_OnConnect() {
   //ds.requestTemperatures();
   //temperature = ds.getTempC(sensor1); // Gets the values of the temperature
-    server.send(200, "text/html", SendHTML(temperature));}
+    server.send(200, "text/html", SendHTML(temperature));} 
 
 
 void setup(void) 
@@ -446,14 +389,11 @@ pot_raw = analogRead(15);
       if (temperature > 63 && temperature < 100) {kP = 10;}}       
   
   if (pot == 110) {
-      targetTempC = 68; 
-      if (temperature > 0 && temperature < 50) {kP = 3;}
-      if (temperature > 51 && temperature < 55) {kP = 6;}
-      if (temperature > 56 && temperature < 60) {kP = 7;}
-      if (temperature > 61 && temperature < 64) {kP = 9;}
-      if (temperature > 65 && temperature < 100) {kP = 29;}}
+      targetTempC =74; 
+      kP = 30;
+      }
        
-  if (pot == 120) {
+  if (pot == 130) {
       targetTempC = 73; 
       if (temperature > 0 && temperature < 50) {kP = 2;}
       if (temperature > 51 && temperature < 55) {kP = 4;}
@@ -461,7 +401,7 @@ pot_raw = analogRead(15);
       if (temperature > 61 && temperature < 65) {kP = 7;}
       if (temperature > 66 && temperature < 100) {kP = 9;}}
          
-  if (pot == 130) {
+  if (pot == 140) {
       targetTempC = 75; 
       if (temperature > 0 && temperature < 50) {kP = 2;}
       if (temperature > 51 && temperature < 55) {kP = 4;}
@@ -469,7 +409,7 @@ pot_raw = analogRead(15);
       if (temperature > 61 && temperature < 65) {kP = 7;}
       if (temperature > 66 && temperature < 100) {kP = 9;}}
         
-  if (pot == 140) {
+  if (pot == 150) {
       targetTempC = 79; 
       if (temperature > 0 && temperature < 50) {kP = 2;}
       if (temperature > 51 && temperature < 60) {kP = 4;}
@@ -477,8 +417,8 @@ pot_raw = analogRead(15);
       if (temperature > 69 && temperature < 73) {kP = 8;}
       if (temperature > 76 && temperature < 100) {kP = 9;}}
       
-        if (pot == 150) {
-      targetTempC =64; 
+        if (pot == 120) {
+      targetTempC =67; 
       kP = 37;
       }
 

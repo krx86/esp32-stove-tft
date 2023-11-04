@@ -1,6 +1,6 @@
 {
     "cmake.configureOnOpen": false,
-    "cmake.sourceDirectory": "C:/Users/krx86/Documents/PlatformIO/Projects/230617-223736-esp32-s3-devkitc-1/.pio/libdeps/esp32-s3-devkitc-1/Unity",
+    "cmake.sourceDirectory": "C:/Users/krx86/Documents/PlatformIO/Projects/esp32-stove-tft/.pio/libdeps/esp32-s3-devkitc-1/AsyncTCP-esphome",
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "*.tcc": "cpp",
