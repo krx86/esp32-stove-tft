@@ -1,6 +1,48 @@
 #pragma once
+
 #include "Arduino.h"
 #include <ESP32Servo.h>
+#include <arrow.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
+#include <SPI.h>
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+#include <esp_sleep.h>
+#include <esp_bt_main.h>
+#include "Free_Fonts.h"
+#include "FreeSansBold42pt7b.h"
+#include "kluda.h"
+#include <WebServer.h>
+#include "ESPTelnet.h"
+#define SERIAL_SPEED    115200
+
+const char* host = "esp32";
+const char* ssid = "HUAWEI-B525-90C8";
+const char* password = "BTT6F1EA171";
+
+#define GFXFF 1
+
+WebServer server(80);  
+ESPTelnet telnet;
+IPAddress ip;
+uint16_t  port = 23;
+
+OneWire oneWire(6);
+DallasTemperature ds(&oneWire);
+DeviceAddress sensor1 = {0x28, 0xFC, 0x70, 0x96, 0xF0, 0x01, 0x3C, 0xC0};
+
+TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+TFT_eSprite img = TFT_eSprite(&tft);
+TFT_eSprite bckg = TFT_eSprite(&tft);
+TFT_eSprite text = TFT_eSprite(&tft);
+TFT_eSprite text2 = TFT_eSprite(&tft);
+TFT_eSprite text3 = TFT_eSprite(&tft);
+TFT_eSprite text4 = TFT_eSprite(&tft);
+TFT_eSprite img2 = TFT_eSprite(&tft);
 
 int temperature = 0;       // initialize temperature variable for C
 int temperatureMin = 50; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
@@ -65,3 +107,16 @@ int z = 0;
 int kludas = 0;
 
 Servo myservo;
+
+String messageDamp;    // Initialize message for damper 2
+String messageinfo;    // Initialize message for damper 3
+bool endBuzzer = true;
+bool refillBuzzer = true;
+bool oddLoop = true;
+bool sleep_ = false;
+
+#define EXE_INTERVAL 5000
+
+unsigned long lastExecutedMillis = 0;
+
+int TempHist[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Set temperature history array
