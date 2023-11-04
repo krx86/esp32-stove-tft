@@ -2,7 +2,7 @@
 
 #include "Arduino.h"
 #include <ESP32Servo.h>
-#include <arrow.h>
+#include "arrow.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
@@ -17,8 +17,8 @@
 #include "FreeSansBold42pt7b.h"
 #include "kluda.h"
 #include <WebServer.h>
-#include "ESPTelnet.h"
-#define SERIAL_SPEED    115200
+
+
 
 const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
@@ -27,9 +27,7 @@ const char* password = "BTT6F1EA171";
 #define GFXFF 1
 
 WebServer server(80);  
-ESPTelnet telnet;
-IPAddress ip;
-uint16_t  port = 23;
+
 
 OneWire oneWire(6);
 DallasTemperature ds(&oneWire);
@@ -120,3 +118,5 @@ bool sleep_ = false;
 unsigned long lastExecutedMillis = 0;
 
 int TempHist[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Set temperature history array
+
+void handle_NotFound();

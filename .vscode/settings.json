@@ -3,7 +3,28 @@
     "cmake.sourceDirectory": "C:/Users/krx86/Documents/PlatformIO/Projects/esp32-stove-tft/.pio/libdeps/esp32-s3-devkitc-1/AsyncTCP-esphome",
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
+        "*.cpp": "cpp",
         "*.tcc": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "vector": "cpp",
+        "optional": "cpp",
+        "functional": "cpp",
+        "memory": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "mutex": "cpp",
+        "ostream": "cpp",
+        "ratio": "cpp",
+        "string_view": "cpp",
+        "thread": "cpp",
+        "regex": "cpp",
+        "type_traits": "cpp",
+        "typeinfo": "cpp",
+        "numeric": "cpp"
     }
 }

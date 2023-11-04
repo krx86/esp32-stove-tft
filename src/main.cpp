@@ -1,24 +1,6 @@
 #include "Arduino.h"
 #include "paramets.h"
-
-
-
-
- 
-  
-
-
-
-
-
-
-// Device objects - create servo, therocouple, and lcd objects 
-
-
-
-
-
-
+#include "telnet.h"
 
 
  //Returns 'true' for refilled and temperature climbing or 'false' for temperature falling
@@ -38,8 +20,6 @@ bool WoodFilled(int CurrentTemp) {
 
 
 
-
- //void handle_NotFound();
 
 
 void handle_NotFound(){
@@ -74,72 +54,6 @@ String SendHTML(int temperature ){
   return ptr;
 }
 
-
-void setupSerial(long speed, String msg = "") {
-  Serial.begin(speed);
-  while (!Serial) {
-  }
-  delay(200);  
-  Serial.println();
-  Serial.println();
-  if (msg != "") Serial.println(msg);
-}
-
-void onTelnetConnect(String ip) {
-  Serial.print("- Telnet: ");
-  Serial.print(ip);
-  Serial.println(" connected");
-  
-  telnet.println("\nWelcome " + telnet.getIP());
-  telnet.println("(Use ^] + q  to disconnect.)");
-}
-
-void onTelnetDisconnect(String ip) {
-  Serial.print("- Telnet: ");
-  Serial.print(ip);
-  Serial.println(" disconnected");
-}
-
-void onTelnetReconnect(String ip) {
-  Serial.print("- Telnet: ");
-  Serial.print(ip);
-  Serial.println(" reconnected");
-}
-
-void onTelnetConnectionAttempt(String ip) {
-  Serial.print("- Telnet: ");
-  Serial.print(ip);
-  Serial.println(" tried to connected");
-}
-
-void onTelnetInput(String str) {
-  // checks for a certain command
-  if (str == "ping") {
-    telnet.println("> pong");
-    Serial.println("- Telnet: pong");
-  // disconnect the client
-  } else if (str == "bye") {
-    telnet.println("> disconnecting you...");
-    telnet.disconnectClient();
-    }
-  }
-
-void setupTelnet() {  
-  // passing on functions for various telnet events
-  telnet.onConnect(onTelnetConnect);
-  telnet.onConnectionAttempt(onTelnetConnectionAttempt);
-  telnet.onReconnect(onTelnetReconnect);
-  telnet.onDisconnect(onTelnetDisconnect);
-  telnet.onInputReceived(onTelnetInput);
-
-  Serial.print("- Telnet: ");
-  if (telnet.begin(port)) {
-    Serial.println("running");
-  } else {
-    Serial.println("error.");
-    
-  }
-} 
  
 void handle_OnConnect() {
   //ds.requestTemperatures();
@@ -150,7 +64,7 @@ void handle_OnConnect() {
 void setup(void) 
 {
    
-  setupSerial(SERIAL_SPEED, "Telnet Test");
+  setupSerial;
 
    
 
@@ -166,20 +80,6 @@ void setup(void)
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
  
-  
-  // Port defaults to 3232
-  // ArduinoOTA.setPort(3232);
-
-  // Hostname defaults to esp3232-[MAC]
-  // ArduinoOTA.setHostname("myesp32");
-
-  // No authentication by default
-  // ArduinoOTA.setPassword("admin");
-
-  // Password can be set with it's md5 value as well
-  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -240,7 +140,7 @@ ds.begin();
 
    
     delay(50);
-       setupTelnet();
+       setupTelnet;
 
           server.on("/", handle_OnConnect);
   server.onNotFound(handle_NotFound);
