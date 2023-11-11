@@ -2,6 +2,7 @@
 #include "iestatijumi.h"
 #include "telnet.h"
 #include "pogas.h"
+#include "temp_iestat.h"
 #include "arrow.h"
 #include "Free_Fonts.h"
 #include "FreeSansBold42pt7b.h"
@@ -172,31 +173,13 @@ if (temperature < 0){
  {kludas = 0;}
   
 //pot_raw = analogRead(15); 
-pogas ();
-
-
-    
-
-   
-    
-
-    
-  
-   
-
-
-
-
+pogas ();                           // pogas funkcijas
          
     if(digitalRead(relayPort)==HIGH)
       {messageinfo = "VENTILATOR ON    ";}
       
     else 
       {messageinfo = "VENTILATOR OFF";}
-
-    
-   
-        
     
          // read thermocouple temp in C
 
@@ -207,37 +190,12 @@ pogas ();
     noTone(buzzerPort);
     delay(buzzerRefillDelay);}
            
-  if (pot <= 100) 
-    {targetTempC = 65; 
-      if (temperature > 0 && temperature < 40) {kP = 2;}
-      if (temperature > 41 && temperature < 54) {kP = 4;}
-      if (temperature > 55 && temperature < 62) {kP = 7;}
-      if (temperature > 63 && temperature < 100) {kP = 10;}}       
   
-  if (pot == 120) {
-      targetTempC = 67; 
-      kP =35; }
+ 
        
-  if (pot == 130) {
-            targetTempC =73; 
-      kP = 30;}
+  temp_iestat();
          
-  if (pot == 140) {
-      targetTempC = 75; 
-      if (temperature > 0 && temperature < 50) {kP = 2;}
-      if (temperature > 51 && temperature < 55) {kP = 4;}
-      if (temperature > 56 && temperature < 60) {kP = 6;}
-      if (temperature > 61 && temperature < 65) {kP = 7;}
-      if (temperature > 66 && temperature < 100) {kP = 9;}}
-        
-  if (pot == 150) {
-      targetTempC = 79; 
-      kP =25;}
-      
-        if (pot == 110) {
-      targetTempC =64; 
-      kP = 37;
-      }
+  
 
        
     if (pot <= potRelMax ) {  
@@ -274,7 +232,6 @@ pogas ();
         }
         // set damper position and limit damper values to physical constraints
         damper = kP * errP + kI * errI + kD * errD;
-        damper2= kP * errP + kI * 50000 + kD * errD;
         if (damper < minDamper) damper = minDamper;
         if (damper > maxDamper) damper = maxDamper;
 
@@ -368,13 +325,10 @@ text4.drawString(messageDamp,0,0,GFXFF);
 text4.pushToSprite(&bckg,20,188, TFT_BLACK); 
 
 bckg.pushSprite(0,0,TFT_BLACK);
-
-  telnet.println("damper:" + String(damper) +" = " + "damper2:" + String(damper2) + " | " + "eerrp:" + String(errP));
-      
+    
   telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));
  
- 
- text.unloadFont();
+text.unloadFont();
 text2.unloadFont();
 text3.unloadFont();
 text3.unloadFont();
