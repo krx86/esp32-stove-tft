@@ -9,6 +9,7 @@
 
 int wood=0;
 int wood2=0;
+int damper2=0;
 
 int TempHist[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Set temperature history array
 
@@ -170,30 +171,18 @@ if (temperature < 0){
  else
  {kludas = 0;}
   
-pot_raw = analogRead(15); 
+//pot_raw = analogRead(15); 
+pogas ();
 
-if (pot_raw>=70 && pot_raw<=85)     //down
-    {pot = pot -10;
-    delay(500);}
+
     
-     if (pot_raw>=0 &&  pot_raw<=10)     //up
-     {pot = pot +10;
-     delay(500);}
+
    
-    if (pot_raw>=30 && pot_raw<=50)     //left
-      {digitalWrite(relayPort, HIGH);
-      delay(90000);}
-      else
-      {digitalWrite(relayPort, LOW);}
-  
+    
 
-
-    if (pot_raw>=12 && pot_raw<=25)     //right 
-      {
-        digitalWrite(relayPort, LOW);}
+    
   
-   if (pot_raw>=140 && pot_raw<=180)
-      { ESP.restart(); }
+   
 
 
 
@@ -279,8 +268,13 @@ if (pot_raw>=70 && pot_raw<=85)     //down
           errI = 0;  // reset integral term after wood refill
           telnet.println("reset12");
         }
+
+        if (errI<0){
+          errI=0;
+        }
         // set damper position and limit damper values to physical constraints
         damper = kP * errP + kI * errI + kD * errD;
+        damper2= kP * errP + kI * 50000 + kD * errD;
         if (damper < minDamper) damper = minDamper;
         if (damper > maxDamper) damper = maxDamper;
 
@@ -375,16 +369,9 @@ text4.pushToSprite(&bckg,20,188, TFT_BLACK);
 
 bckg.pushSprite(0,0,TFT_BLACK);
 
-  telnet.println("erri:" + String(errI) +" |  " + "temperatura:" + String(temperature) + " | " + "eerrp:" + String(errP));
+  telnet.println("damper:" + String(damper) +" = " + "damper2:" + String(damper2) + " | " + "eerrp:" + String(errP));
       
-      if (wood<wood2) {
-          errI = 0;  // reset integral term after wood refill
-          telnet.println("reset");
-        }
-
-
-
-  telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " | " + "wood2:" + String(wood2));
+  telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));
  
  
  text.unloadFont();

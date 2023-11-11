@@ -79,13 +79,13 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 5000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 12000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 195000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 1112000;  // closeTrigger used to close damper at end of combustion
 
 
-int pot_raw = 0;
-int pot = 120;
-int relayPort = 13;
+extern int pot_raw;
+extern int pot;
+extern int relayPort;
 int oldPot = 0;
 float potMax = 1000.0;   // Potentiometer calibration
 int potRelMax = 100;     // Potentiometer value above which the regulator runs in automatic mode
