@@ -13,10 +13,10 @@ void pogas (){
         {pot = pot +10;
         delay(800);}
     
-    else if 
+/*     else if 
     (pot_raw>=12 && pot_raw<=25)     //right 
       {digitalWrite(relayPort, LOW);
-      delay(800);}
+      delay(800);} */
      
     else if (pot_raw>=30 && pot_raw<=50)     //left
       {digitalWrite(relayPort, HIGH);

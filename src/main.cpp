@@ -7,13 +7,15 @@
 #include "Free_Fonts.h"
 #include "FreeSansBold42pt7b.h"
 #include <kluda.h>
-
+#include <setting.h>
+int rawx=0;
 int wood=0;
 int wood2=0;
 int damper2=0;
-
+int raw2[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int TempHist[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Set temperature history array
-
+bool setti = false;
+bool old_setti = false;
  //Returns 'true' for refilled and temperature climbing or 'false' for temperature falling
 bool WoodFilled(int CurrentTemp) {
    for (int i = 9; i > 0; i--) {
@@ -159,7 +161,7 @@ ArduinoOTA.handle();
     ds.requestTemperatures();
     temperature = ds.getTempC(sensor1);
      // save the last executed time
-  telnet.println("erri:" + String(errI) +" |  " + "temperatura:" + String(temperature) + " | " + "eerrp:" + String(errP));
+  //telnet.println("erri:" + String(errI) +" |  " + "temperatura:" + String(temperature) + " | " + "eerrp:" + String(errP));
 
   }
 
@@ -175,6 +177,18 @@ if (temperature < 0){
 //pot_raw = analogRead(15); 
 pogas ();                           // pogas funkcijas
          
+
+
+
+for (int i = 9; i > 0; i--) {
+     raw2[i] = raw2[i-1];
+   }
+
+raw2[0]=pot_raw;   
+
+
+
+    
     if(digitalRead(relayPort)==HIGH)
       {messageinfo = "VENTILATOR ON    ";}
       
@@ -232,6 +246,7 @@ pogas ();                           // pogas funkcijas
         }
         // set damper position and limit damper values to physical constraints
         damper = kP * errP + kI * errI + kD * errD;
+        damper2 = kP * errP + kI * 8000 + kD * errD;
         if (damper < minDamper) damper = minDamper;
         if (damper > maxDamper) damper = maxDamper;
 
@@ -265,7 +280,7 @@ pogas ();                           // pogas funkcijas
         }
     }
  
-  telnet.println("TempHist[0]:" + String(TempHist[0]) +" |  " + "TempHist[9]:" + String(TempHist[9]) + " | " + "kludas:" + String(kludas));
+  telnet.println("raw2[1]:" + String(raw2[1]) +" |  " + "damper2:" + String(damper2) + "raw2[3]:" + String(raw2[3]) +" |  " + "raw2[4]:" + String(raw2[4]) +"raw2[5]:" + String(raw2[5]) +" |  " + "raw2[6]:" + String(raw2[6]));
 
 text4.createSprite(130, 40);
   if (kludas > 20)
@@ -300,10 +315,31 @@ else
   
   img2.createSprite(17, 100);
   
-bckg.pushImage(0,0,320,240,arrow);
+   if 
+    (pot_raw>=12 && pot_raw<=25) {
+       delay(500);    
+      setti = !setti;
+       delay(100);    
+    } 
+      //right 
+      
+     
+     if (old_setti != setti) {
+      if(setti == true){
+      bckg.pushImage(0,0,320,240,setting);
+      bckg.pushSprite(0,0,TFT_BLACK);
+      
+      
+      }
+      
+       
+      old_setti = setti;}
+   
 
-
-y=105-temperature;
+      
+      if(setti == false) {
+        bckg.pushImage(0,0,320,240,arrow);
+        y=105-temperature;
 img2.fillRect(0,0,17,y,TFT_WHITE),
 img2.pushToSprite(&bckg,73,30, TFT_BLACK);
 
@@ -323,11 +359,7 @@ img.pushToSprite(&bckg,90,0, TFT_BLACK);
 text4.setFreeFont(FF23);
 text4.drawString(messageDamp,0,0,GFXFF);
 text4.pushToSprite(&bckg,20,188, TFT_BLACK); 
-
 bckg.pushSprite(0,0,TFT_BLACK);
-    
-  telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));
- 
 text.unloadFont();
 text2.unloadFont();
 text3.unloadFont();
@@ -339,6 +371,22 @@ text3.deleteSprite();
 text4.deleteSprite(); 
 img.deleteSprite();
 img2.deleteSprite();
+}
+
+
+
+
+
+
+    
+  telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));     
+  telnet.println("-");
+  telnet.println("pot:" + String(pot) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
+telnet.println("-");
+telnet.println("target:" + String(targetTempC) +" |  " + "pot_raw:" + String(pot_raw) + " > " + "pot:" + String(pot));  
+telnet.println("-");
+ 
+
 
     // Drive servo and print damper position to the lcd
 if (currentMillis - lastExecutedMillis >= EXE_INTERVAL){
@@ -368,35 +416,7 @@ diff = damper - oldDamper;
       oldPot = pot;
       oldDamper =  damper;}
 
-        // Regulator model data via serial output
-    // Output: tempC, tempF, damper%, damper(calculated), damperP, damperI, damperD, errP, errI, errD
-    //Serial.println(pot_raw);
-    
-  /*   
-        
-  Serial.print(temperature);
-  Serial.print(",");
-  Serial.print(CurrentTemp);
-    Serial.print(",");
-    Serial.print(round(damper));
-    Serial.print(",");
-    Serial.print(round(kP*errP + kI*errI + kD+errD));
-    Serial.print(",");
-    Serial.print(round(kP*errP));
-    Serial.print(",");
-    Serial.print(round(kI*errI));
-    Serial.print(",");
-    Serial.print(round(kD*errD));
-    Serial.print(",");  
-    Serial.print(errP);
-    Serial.print(",");
-    Serial.print(errI);
-    Serial.print(",");
-    Serial.print(errD);
-    Serial.print(",");    
-    Serial.println(); */
- 
-//Serial.print(angle);
+       
 if(sleep_==true)
   {delay(50);
     esp_deep_sleep_start();}
@@ -405,7 +425,6 @@ if(sleep_==true)
 oddLoop = !oddLoop;
     // Delay between loop cycles
       z=currentMillis - lastExecutedMillis;
-      telnet.println("cikls_beigas:" + String(pot) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
 
 lastExecutedMillis = currentMillis;
 

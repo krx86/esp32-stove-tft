@@ -1,0 +1,4 @@
+if
+(pot_raw>=12 && pot_raw<=25)     //right 
+      {digitalWrite(relayPort, LOW);
+      delay(800);}
