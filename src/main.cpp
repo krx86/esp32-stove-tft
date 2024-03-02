@@ -2,7 +2,7 @@
 #include "iestatijumi.h"
 #include "telnet.h"
 #include "pogas.h"
-#include "temp_iestat.h"
+//#include "temp_iestat.h"
 #include "arrow.h"
 #include "Free_Fonts.h"
 #include "FreeSansBold42pt7b.h"
@@ -16,6 +16,11 @@ int raw2[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int TempHist[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Set temperature history array
 bool setti = false;
 bool old_setti = false;
+bool suknis ;
+bool suknis_old ;
+int krx6 = 0;
+int krx56 = 0;
+bool krx106 = false;
  //Returns 'true' for refilled and temperature climbing or 'false' for temperature falling
 bool WoodFilled(int CurrentTemp) {
    for (int i = 9; i > 0; i--) {
@@ -100,7 +105,8 @@ void setup(void)
   Serial.println(WiFi.localIP());
     
     analogReadResolution(9);
-      adcAttachPin(15);
+    //analogSetAttenuation(ADC_0db); 
+      adcAttachPin(9);
     
     myservo.attach(5);  // attach servo object to pin 10
     myservo.write(50); 
@@ -109,18 +115,19 @@ void setup(void)
     pinMode(buzzerPort, OUTPUT); // configure buzzer pin as an output
     pinMode(relayPort, OUTPUT);
 
-    digitalWrite(relayPort, LOW);
+    digitalWrite(relayPort, HIGH);
 
     E= ds.getDeviceCount();  
 
     
     tft.init();
     tft.setRotation(3);
-    tft.fillScreen(TFT_BLACK);
+    tft.fillScreen(TFT_WHITE);
     
-    bckg.createSprite(320, 240);
-    
+   
+       
     bckg.setSwapBytes(true);
+  
 ds.begin();
 
    
@@ -144,12 +151,12 @@ server.handleClient();
 telnet.loop();
 
   // send serial input to telnet as output
-  if (Serial.available()) {
+ /*  if (Serial.available()) {
     telnet.print(Serial.read());
-  }
+  } */
 esp_bluedroid_disable;
 
-esp_sleep_enable_ext0_wakeup(GPIO_NUM_15,0);
+esp_sleep_enable_ext0_wakeup(GPIO_NUM_9,0);
 
 ArduinoOTA.handle();
 
@@ -172,12 +179,17 @@ if (temperature < 0){
     temperature = -1; 
  }
  else
- {kludas = 0;}
+ {kludas = 0;} 
   
 //pot_raw = analogRead(15); 
 pogas ();                           // pogas funkcijas
          
-
+  if (pot_raw>=30 && pot_raw<=50) {
+       digitalWrite(TFT_BL, LOW);
+       delay(500); 
+       digitalWrite(TFT_BL, HIGH);
+       
+    } 
 
 
 for (int i = 9; i > 0; i--) {
@@ -207,10 +219,34 @@ raw2[0]=pot_raw;
   
  
        
-  temp_iestat();
+  //temp_iestat();
+
+  int pow = digitalRead(relayPort);
+  if(pow == LOW && temperature > targetTempC -2 && errI < endTrigger) {suknis = true;
+   telnet.println("suknis iesledzas");
+   digitalWrite(relayPort, HIGH);
+   delay(18000);
+    targetTempC = 69;
+  }
          
   
+if(temperature < targetTempC  && suknis==false && errI < endTrigger) {
+    targetTempC = 76;
+  digitalWrite(relayPort, LOW);
+  telnet.println("NEuzsila");
+}
+else
+{ 
+telnet.println("uzsila");
+}
 
+
+
+if (suknis == true && errI > endTrigger ){
+   digitalWrite(relayPort, LOW);
+  telnet.println("suknis true");}
+
+if (suknis == false ){telnet.println("suknis false");}
        
     if (pot <= potRelMax ) {  
       // Manual damper regulation mode if potentiometer reads 100% or less
@@ -252,12 +288,16 @@ raw2[0]=pot_raw;
 
         messageDamp = "Auto"; // set damper output message, auto
 
+        if(temperature>temperatureMin){
+          refillTrigger = 1500;
+          endTrigger = 2500;
+        }
+        
         //Refill Alarm
         if (errI > refillTrigger) 
-          { messageDamp = "Fill"; 
-           
-                
+          { messageDamp = "Fill";  
         }
+        
         else {messageDamp = "AUTO";}
 
       }
@@ -266,13 +306,24 @@ raw2[0]=pot_raw;
         // End of combustion condition for errI >= endTrigger
 
         messageDamp = "End "; // set damper output message, end
-        
+       
+      
+        digitalWrite(TFT_BL, LOW);
+       
+ 
+              if (temperature > 75) {
+          digitalWrite(relayPort, HIGH);
+          delay(1500);
+                    digitalWrite(relayPort, LOW);
+          delay(1500);
+     
+          telnet.println("reset end");
+        }
 
       if (temperature < temperatureMin) {
           damper = zeroDamper;
           sleep_ = true;
           
-
         }
 
 }
@@ -280,14 +331,15 @@ raw2[0]=pot_raw;
         }
     }
  
-  telnet.println("raw2[1]:" + String(raw2[1]) +" |  " + "damper2:" + String(damper2) + "raw2[3]:" + String(raw2[3]) +" |  " + "raw2[4]:" + String(raw2[4]) +"raw2[5]:" + String(raw2[5]) +" |  " + "raw2[6]:" + String(raw2[6]));
+  telnet.println("errI:" + String(errI));
 
 text4.createSprite(130, 40);
+text4.fillSprite(TFT_WHITE);
   if (kludas > 20)
     {
       img.createSprite(200, 200);
       img.pushImage(0,0,200,200,kluda);
-      text4.setTextColor(TFT_GREEN,TFT_BLACK);
+      text4.setTextColor(TFT_BLACK);
 
 messageDamp = "Error"; 
  
@@ -298,95 +350,135 @@ messageDamp = "Error";
  
     }  
 else
-  {text4.setTextColor(10,TFT_BLACK);}
+  {text4.setTextColor(TFT_BLACK);}
 
 
     if (oddLoop) 
     { messageinfo = "Dmp " + String(damper) + "% Pot " + round(pot);} // set alt damper output message
 
-   text.createSprite(90, 65);
-    text.setTextColor(TFT_RED,TFT_WHITE);
 
-    text3.createSprite(50, 50);
-    text3.setTextColor(10,TFT_BLACK);
-
-    text2.createSprite(100, 50);
-    text2.setTextColor(10,TFT_BLACK);
   
-  img2.createSprite(17, 100);
   
-   if 
-    (pot_raw>=12 && pot_raw<=25) {
-       delay(500);    
-      setti = !setti;
-       delay(100);    
-    } 
-      //right 
-      
-     
-     if (old_setti != setti) {
-      if(setti == true){
-      bckg.pushImage(0,0,320,240,setting);
-      bckg.pushSprite(0,0,TFT_BLACK);
-      
-      
-      }
-      
-       
-      old_setti = setti;}
-   
+  
+    if (pot_raw >= 155 && pot_raw <= 175) {
+  delay(500);
+  setti = !setti;
+  delay(100);
+  tft.fillScreen(TFT_WHITE);
+}
 
-      
-      if(setti == false) {
-        bckg.pushImage(0,0,320,240,arrow);
-        y=105-temperature;
-img2.fillRect(0,0,17,y,TFT_WHITE),
-img2.pushToSprite(&bckg,73,30, TFT_BLACK);
-
- text.setFreeFont(&FreeSansBold42pt7b);
-text.drawString(String(temperature),0,0,GFXFF);
-text.pushToSprite(&bckg,125,60, TFT_BLACK);
-
-text2.setFreeFont(FF35);
-text2.drawString(String(damper) + " %" ,0,0,GFXFF);
-text2.pushToSprite(&bckg,190,190, TFT_BLACK);
-
-text3.drawString(String(targetTempC) ,0,0,4);
-text3.pushToSprite(&bckg,120,23, TFT_BLACK);
-
-img.pushToSprite(&bckg,90,0, TFT_BLACK);
-
-text4.setFreeFont(FF23);
-text4.drawString(messageDamp,0,0,GFXFF);
-text4.pushToSprite(&bckg,20,188, TFT_BLACK); 
-bckg.pushSprite(0,0,TFT_BLACK);
+// Button
+if (setti) {
+  telnet.println("settings enable");
+  Serial.print(" - ");
+  Serial.print("settings enable");
+  Serial.print(" - ");
+  img2.createSprite(220, 30);
+  img2.fillSprite(TFT_TRANSPARENT);
+  bckg.createSprite(320, 240);
+  //bckg.fillSprite(TFT_WHITE);
+  bckg.pushImage(0, 0, 320, 240, setting);
+  text.createSprite(200, 30);
+  text.fillSprite(TFT_WHITE);
+  text.setTextColor(TFT_BLACK);
+  text5.createSprite(200, 30);
+  text5.fillSprite(TFT_WHITE);
+  text5.setTextColor(TFT_BLACK);
+  text2.createSprite(200, 30);
+  text2.fillSprite(TFT_WHITE);
+  text2.setTextColor(TFT_BLACK);
+  text3.createSprite(200, 30);
+  text3.fillSprite(TFT_WHITE);
+  text3.setTextColor(TFT_BLACK);
+  text5.setFreeFont(FSSB12);
+  text5.drawString("TargetTemp.  " + String(targetTempC), 0, 0, GFXFF);
+  text5.pushToSprite(&bckg, 120, 10);
+  text2.setFreeFont(FSSB12);
+  text2.drawString("koificients  " + String(kP), 0, 0, GFXFF);
+  text2.pushToSprite(&bckg, 120, 60);
+  text3.setFreeFont(FSSB12);
+  text3.drawString("Max damp.  " + String(maxDamperx), 0, 0, GFXFF);
+  text3.pushToSprite(&bckg, 120, 110);
+  text.setFreeFont(FSSB12);
+  text.drawString("Damper  " + String(pot), 0, 0, GFXFF);
+  text.pushToSprite(&bckg, 120, 160);
+  img2.drawRect(0, 0, 200, 30, 10);
+  img2.pushToSprite(&bckg, 116, krx, TFT_TRANSPARENT);
+  bckg.pushSprite(0, 0);
+  text2.unloadFont();
+  text3.unloadFont();
+  text3.unloadFont();
+  text5.unloadFont();
+  text2.deleteSprite();
+  text3.deleteSprite();
+  text4.deleteSprite();
+  img.deleteSprite();
+  img2.deleteSprite();
+  text5.deleteSprite();
+  bckg.deleteSprite();
+  old_setti = setti;
+} else {
+  telnet.println("settings disable");
+  Serial.print(" - ");
+  Serial.print("settings disable");
+  Serial.print(" - ");
+  bckg.createSprite(110, 170);
+  bckg.fillSprite(TFT_WHITE);
+  y = 105 - temperature;
+  img2.createSprite(17, y);
+  img2.fillSprite(TFT_WHITE);
+  text.createSprite(195, 85);
+  text.fillSprite(TFT_WHITE);
+  text.setTextWrap(true);
+  text.setTextColor(TFT_RED);
+  text3.createSprite(200, 30);
+  text3.fillSprite(TFT_WHITE);
+  text3.setTextColor(TFT_BLACK);
+  text2.createSprite(100, 50);
+  text2.fillSprite(TFT_WHITE);
+  text2.setTextColor(TFT_BLACK);
+  bckg.pushImage(0, 0, 110, 170, arrow);
+  y = 105 - temperature;
+  img2.fillRect(0, 0, 17, y, TFT_BLACK);
+  img2.pushToSprite(&bckg, 63, 14, TFT_WHITE);
+  bckg.pushSprite(0, 10, TFT_BLACK);
+  text.setFreeFont(&FreeSansBold42pt7b);
+  text.drawString(String(temperature) + " c", 0, 0, GFXFF);
+  text.pushSprite(120, 60);
+  text2.setFreeFont(FF35);
+  text2.drawString(String(damper) + " %", 0, 0, GFXFF);
+  text2.pushSprite(190, 190);
+  text3.drawString(String(targetTempC) + "°c   Target.", 0, 0, 4);
+  text3.pushSprite(120, 20);
+  img.pushSprite(90, 0, TFT_BLACK);
+  text4.setFreeFont(FF23);
+  text4.drawString(messageDamp, 0, 0, GFXFF);
+  text4.pushSprite(20, 188);
+}
+telnet.println(krx6);
+telnet.println(krx56);
 text.unloadFont();
 text2.unloadFont();
 text3.unloadFont();
-text3.unloadFont();
-
+text5.unloadFont();
 text.deleteSprite();
 text2.deleteSprite();
 text3.deleteSprite();
-text4.deleteSprite(); 
+text4.deleteSprite();
 img.deleteSprite();
 img2.deleteSprite();
-}
-
-
-
-
-
-
-    
-  telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));     
+text5.deleteSprite();
+bckg.deleteSprite();
+   
+  //telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));     
   telnet.println("-");
-  telnet.println("pot:" + String(pot) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
 telnet.println("-");
-telnet.println("target:" + String(targetTempC) +" |  " + "pot_raw:" + String(pot_raw) + " > " + "pot:" + String(pot));  
+telnet.println("angle:" + String(angle) +" |  " + "oldDamper:" + String(oldDamper) + " > " + "pot:" + String(pot));  
 telnet.println("-");
  
-
+            Serial.print(" - ");
+Serial.print("settings out");
+Serial.print(" - ");
 
     // Drive servo and print damper position to the lcd
 if (currentMillis - lastExecutedMillis >= EXE_INTERVAL){
@@ -398,16 +490,19 @@ diff = damper - oldDamper;
       }
       delay(50);
       myservo.attach(5);
-      if (diff > 0) {  // action if damper should be moved in the opened direction
+      if (diff > 0) {  // # Perform the specified action if the damper should be moved in the opened direction
+
+
+
         for (int i = 0; i < diff; i++) {
-          angle = (oldDamper + i + 1) * servoAngle / (maxDamper * servoCalibration) + servoOffset;
+          angle = (oldDamper + i + 1) * servoAngle / (maxDamperx * servoCalibration) + servoOffset;
           myservo.write(angle);
           delay(50);
         }}
          
   if (diff < 0) {  // action if damper should be moved in the closed direction
         for (int i = 0; i < abs(diff); i++) {
-          angle = (oldDamper - i - 1) * servoAngle / (maxDamper * servoCalibration) + servoOffset;
+          angle = (oldDamper - i - 1) * servoAngle / (maxDamperx * servoCalibration) + servoOffset;
           myservo.write(angle);
           delay(50);
         }}
@@ -429,9 +524,12 @@ oddLoop = !oddLoop;
 lastExecutedMillis = currentMillis;
 
     }
+      telnet.println("angle:" + String(angle) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
+
     delay(200);
 
   
 }
+
 
 

@@ -38,6 +38,8 @@ TFT_eSprite text2 = TFT_eSprite(&tft);
 TFT_eSprite text3 = TFT_eSprite(&tft);
 TFT_eSprite text4 = TFT_eSprite(&tft);
 TFT_eSprite img2 = TFT_eSprite(&tft);
+TFT_eSprite text5 = TFT_eSprite(&tft);
+TFT_eSprite bckg2 = TFT_eSprite(&tft);
 
 
 float error = 0.0;                  // Temperature compensation error
@@ -67,24 +69,26 @@ float servoAngle = 35;  // adjust value to define total angular travel of servo 
 
 
 int temperature = 0;       // initialize temperature variable for C
-int temperatureMin = 45; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
-int targetTempC = 0;   // the target temperature as measured by the thermocouple (135 C = 275 F)
+int temperatureMin = 55; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
+int targetTempC = 69;   // the target temperature as measured by the thermocouple (135 C = 275 F)
 float errP = 0.0;          // initialize the proportional term
 float errD = 0.0;          // initialize the derivative term
 float errI = 0.0;          // initialize the integral term
 float errOld = 0.0;        // initialize term used to capture prior cycle ErrP
-int kP = 0;            // Overall gain coefficient and P coefficient of the PID regulation
+int kP = 30;            // Overall gain coefficient and P coefficient of the PID regulation
 float tauI = 1000;         // Integral time constant (sec/repeat)
 float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 4000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 8000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 6000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 9000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
-int pot = 120;
+int pot = 110;
 int relayPort = 13;
+
+int krx =6;
 
 
 int oldPot = 0;
@@ -96,7 +100,8 @@ int angle = 0;
 int damper = 0;
 int oldDamper = 0;
 int diff = 0;
-float maxDamper = 100.0;  // Sets maximum damper setting
+int maxDamper = 100;  // Sets maximum damper setting
+int maxDamperx = 100; 
 float minDamper = 0.0;    // Sets minimum damper setting
 float zeroDamper = 0.0;   // Sets zero damper setting - note that stove allows some amount of airflow at zero damper
 
