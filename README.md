@@ -1,4 +1,3 @@
-Sveiki! Prieks jūs satikt un palīdzēt latviešu valodā. Kā varu jums palīdzēt šodien?
 
 Projekta Dokumentācija: esp32-stove-tft
 
