@@ -25,6 +25,10 @@
         "regex": "cpp",
         "type_traits": "cpp",
         "typeinfo": "cpp",
-        "numeric": "cpp"
+        "numeric": "cpp",
+        "array": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "initializer_list": "cpp"
     }
 }

@@ -42,16 +42,43 @@ void setup(void)
 {
    
  Serial.begin(115200);
+     
+     E= ds.getDeviceCount();  
+    ds.begin();
+    
+     tft.init();
+    tft.setRotation(3);
+    tft.fillScreen(TFT_WHITE);
+    bckg.setSwapBytes(true);
+
+      Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+    
+    analogReadResolution(9);
+    //analogSetAttenuation(ADC_0db); 
+      adcAttachPin(9);
+    
+    myservo.attach(5);  // attach servo object to pin 10
+    myservo.write(50); 
+    myservo.detach();    // detach servo object from its pin
+    
+    pinMode(buzzerPort, OUTPUT); // configure buzzer pin as an output
+    pinMode(relayPort, OUTPUT);
+
+    //digitalWrite(relayPort, HIGH);
+
+
    
 
      Serial.println("Booting");
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+/*   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();
-  }
+  } */
 
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
@@ -98,46 +125,19 @@ void setup(void)
 
   ArduinoOTA.begin();
 
-
-
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-    
-    analogReadResolution(9);
-    //analogSetAttenuation(ADC_0db); 
-      adcAttachPin(9);
-    
-    myservo.attach(5);  // attach servo object to pin 10
-    myservo.write(50); 
-    myservo.detach();    // detach servo object from its pin
-    
-    pinMode(buzzerPort, OUTPUT); // configure buzzer pin as an output
-    pinMode(relayPort, OUTPUT);
-
-    digitalWrite(relayPort, HIGH);
-
-    E= ds.getDeviceCount();  
-
-    
-    tft.init();
-    tft.setRotation(3);
-    tft.fillScreen(TFT_WHITE);
-    
-   
-       
-    bckg.setSwapBytes(true);
-  
-ds.begin();
-
-   
     delay(50);
     telnet.begin(port);   
+      server.on("/", handle_OnConnect);
+      server.on("/set_target_temp", HTTP_POST, handle_SetTargetTemp);
+      server.on("/set_kP", HTTP_POST, handle_SetkP);
+      server.on("/temperature", HTTP_GET, handle_GetTemperature);
+      server.on("/damper", HTTP_GET, handle_GetDamper);
+      server.on("/target_temp", HTTP_GET, handle_GetTargetTemp);
+      server.on("/kP_value", HTTP_GET, []() {
+        server.send(200, "text/plain", String(kP)); // Atgriež kP vērtību kā tekstu
+    });
+      server.begin();
 
-          server.on("/", handle_OnConnect);
-  
-
-  server.begin();
   Serial.println("HTTP server started");
    
 
@@ -172,7 +172,7 @@ ArduinoOTA.handle();
 
   }
 
-if (temperature < 0){
+if (temperature < 2){
   ds.requestTemperatures();
     temperature = ds.getTempC(sensor1);
     kludas++;
@@ -184,7 +184,7 @@ if (temperature < 0){
 //pot_raw = analogRead(15); 
 pogas ();                           // pogas funkcijas
          
-  if (pot_raw>=30 && pot_raw<=50) {
+if (pot_raw>=30 && pot_raw<=50 && setti==false) {
        digitalWrite(TFT_BL, LOW);
        delay(500); 
        digitalWrite(TFT_BL, HIGH);
@@ -200,14 +200,14 @@ raw2[0]=pot_raw;
 
 
 
-    
+/*     
     if(digitalRead(relayPort)==HIGH)
       {messageinfo = "VENTILATOR ON    ";}
       
     else 
       {messageinfo = "VENTILATOR OFF";}
     
-         // read thermocouple temp in C
+         // read thermocouple temp in C */
 
  
   if (temperature >90)
@@ -221,7 +221,7 @@ raw2[0]=pot_raw;
        
   //temp_iestat();
 
-  int pow = digitalRead(relayPort);
+  /* int pow = digitalRead(relayPort);
   if(pow == LOW && temperature > targetTempC -2 && errI < endTrigger) {suknis = true;
    telnet.println("suknis iesledzas");
    digitalWrite(relayPort, HIGH);
@@ -247,7 +247,7 @@ if (suknis == true && errI > endTrigger ){
   telnet.println("suknis true");}
 
 if (suknis == false ){telnet.println("suknis false");}
-       
+        */
     if (pot <= potRelMax ) {  
       // Manual damper regulation mode if potentiometer reads 100% or less
       errI = 0;  // reset integral term based on user intent for manual control
@@ -310,7 +310,7 @@ if (suknis == false ){telnet.println("suknis false");}
       
         digitalWrite(TFT_BL, LOW);
        
- 
+/*  
               if (temperature > 75) {
           digitalWrite(relayPort, HIGH);
           delay(1500);
@@ -318,7 +318,7 @@ if (suknis == false ){telnet.println("suknis false");}
           delay(1500);
      
           telnet.println("reset end");
-        }
+        } */
 
       if (temperature < temperatureMin) {
           damper = zeroDamper;
@@ -331,7 +331,7 @@ if (suknis == false ){telnet.println("suknis false");}
         }
     }
  
-  telnet.println("errI:" + String(errI));
+  
 
 text4.createSprite(130, 40);
 text4.fillSprite(TFT_WHITE);
@@ -369,10 +369,7 @@ else
 
 // Button
 if (setti) {
-  telnet.println("settings enable");
-  Serial.print(" - ");
-  Serial.print("settings enable");
-  Serial.print(" - ");
+
   img2.createSprite(220, 30);
   img2.fillSprite(TFT_TRANSPARENT);
   bckg.createSprite(320, 240);
@@ -391,6 +388,9 @@ if (setti) {
   text3.fillSprite(TFT_WHITE);
   text3.setTextColor(TFT_BLACK);
   text5.setFreeFont(FSSB12);
+  text6.createSprite(200, 30);
+  text6.fillSprite(TFT_WHITE);
+  text6.setTextColor(TFT_BLACK);
   text5.drawString("TargetTemp.  " + String(targetTempC), 0, 0, GFXFF);
   text5.pushToSprite(&bckg, 120, 10);
   text2.setFreeFont(FSSB12);
@@ -402,6 +402,10 @@ if (setti) {
   text.setFreeFont(FSSB12);
   text.drawString("Damper  " + String(pot), 0, 0, GFXFF);
   text.pushToSprite(&bckg, 120, 160);
+  text6.setFreeFont(FSSB12);
+  if (suknis == false){text6.drawString("Suknis OFF  ", 0, 0, GFXFF);} 
+  if (suknis == true){text6.drawString("Suknis ON  ", 0, 0, GFXFF);}
+  text6.pushToSprite(&bckg, 120, 210);
   img2.drawRect(0, 0, 200, 30, 10);
   img2.pushToSprite(&bckg, 116, krx, TFT_TRANSPARENT);
   bckg.pushSprite(0, 0);
@@ -418,10 +422,7 @@ if (setti) {
   bckg.deleteSprite();
   old_setti = setti;
 } else {
-  telnet.println("settings disable");
-  Serial.print(" - ");
-  Serial.print("settings disable");
-  Serial.print(" - ");
+
   bckg.createSprite(110, 170);
   bckg.fillSprite(TFT_WHITE);
   y = 105 - temperature;
@@ -455,8 +456,7 @@ if (setti) {
   text4.drawString(messageDamp, 0, 0, GFXFF);
   text4.pushSprite(20, 188);
 }
-telnet.println(krx6);
-telnet.println(krx56);
+
 text.unloadFont();
 text2.unloadFont();
 text3.unloadFont();
@@ -470,15 +470,7 @@ img2.deleteSprite();
 text5.deleteSprite();
 bckg.deleteSprite();
    
-  //telnet.println("erri:" + String(errI) +" |  " + "wood:" + String(wood) + " > " + "wood2:" + String(wood2));     
-  telnet.println("-");
-telnet.println("-");
-telnet.println("angle:" + String(angle) +" |  " + "oldDamper:" + String(oldDamper) + " > " + "pot:" + String(pot));  
-telnet.println("-");
  
-            Serial.print(" - ");
-Serial.print("settings out");
-Serial.print(" - ");
 
     // Drive servo and print damper position to the lcd
 if (currentMillis - lastExecutedMillis >= EXE_INTERVAL){
@@ -524,7 +516,7 @@ oddLoop = !oddLoop;
 lastExecutedMillis = currentMillis;
 
     }
-      telnet.println("angle:" + String(angle) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
+      telnet.println("krx156:" + String(krx156) +" |  " + "temperatura:" + String(temperature) + " | " + "potrav:" + String(pot_raw));
 
     delay(200);
 
