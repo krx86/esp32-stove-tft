@@ -1,4 +1,3 @@
-
 #include "iestatijumi.h"
 #include "telnet.h"
 #include "pogas.h"
