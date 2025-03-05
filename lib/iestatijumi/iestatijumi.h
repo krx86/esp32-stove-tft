@@ -13,18 +13,24 @@
 #include <esp_sleep.h>
 #include <esp_bt_main.h>
 #include <WebServer.h>
-
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
 
 #define GFXFF 1
 
+#define BOT_TOKEN "7495409709:AAFuPnpwo0RJOmQZ3qX9ZjgXHKtjrNpvNFw"  // Aizstāt ar savu token
+#define chatId "6966768770"                                   // Aizstāt ar savu chat ID
+
+WiFiClientSecure secured_client;
+UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 
 const char* host = "esp32";
 const char* ssid = "HUAWEI-B525-90C8";
 const char* password = "BTT6F1EA171";
 
-WebServer server(80);   
+WebServer server(80);
 
-  
+
 
 OneWire oneWire(6);
 DallasTemperature ds(&oneWire);
@@ -60,7 +66,7 @@ byte E;
 int servoPort = 5;
 int potPort = A3;
 
-// Device objects - create servo, therocouple, and lcd objects 
+// Device objects - create servo, therocouple, and lcd objects
 Servo myservo;
 
 // Servo calibration settings
@@ -70,7 +76,7 @@ float servoAngle = 35;  // adjust value to define total angular travel of servo 
 
 
 int temperature = 0;       // initialize temperature variable for C
-int temperatureMin = 55; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
+int temperatureMin = 45; // under this temperature (38C = 100F), the regulation closes the damper if end of fire conditions are met
 int targetTempC = 69;   // the target temperature as measured by the thermocouple (135 C = 275 F)
 float errP = 0.0;          // initialize the proportional term
 float errD = 0.0;          // initialize the derivative term
@@ -82,8 +88,8 @@ float tauD = 5;            // Derivative time constant (sec/reapeat)
 float kI =  kP/tauI;        // I coefficient of the PID regulation
 float kD = kP/tauD;        // D coefficient of the PID regulation
 
-float refillTrigger = 6000;// refillTrigger used to notify need of a wood refill
-float endTrigger = 9000;  // closeTrigger used to close damper at end of combustion
+float refillTrigger = 3000;// refillTrigger used to notify need of a wood refill
+float endTrigger = 6000;  // closeTrigger used to close damper at end of combustion
 
 int pot_raw = 0;
 int pot = 110;
@@ -103,7 +109,7 @@ int damper = 0;
 int oldDamper = 0;
 int diff = 0;
 int maxDamper = 100;  // Sets maximum damper setting
-int maxDamperx = 100; 
+int maxDamperx = 100;
 float minDamper = 0.0;    // Sets minimum damper setting
 float zeroDamper = 0.0;   // Sets zero damper setting - note that stove allows some amount of airflow at zero damper
 
@@ -217,6 +223,23 @@ String SendHTML(int temperature) {
     ptr += "  </div>\n";
     ptr += "</div>\n";
 
+    ptr += "<p onclick=\"openModal('modalTemperatureMin')\">Minimālā Temperatūra: <span id=\"temperatureMin\" class=\"value\">";
+ptr += temperatureMin;
+ptr += "</span> °C</p>\n";
+
+// Modālais logs minimālās temperatūras maiņai
+ptr += "<div id=\"modalTemperatureMin\" class=\"modal\">\n";
+ptr += "  <div class=\"modal-content\">\n";
+ptr += "    <h3>Mainīt Minimālo Temperatūru</h3>\n";
+ptr += "    <form action=\"/set_temperature_min\" method=\"POST\">\n";
+ptr += "      <input type=\"number\" name=\"temperature_min\" value=\"" + String(temperatureMin) + "\" min=\"30\" max=\"55\" step=\"1\">\n";
+ptr += "      <input type=\"submit\" value=\"Saglabāt\">\n";
+ptr += "    </form>\n";
+ptr += "    <button class=\"close-btn\" onclick=\"closeModal('modalTemperatureMin')\">Aizvērt</button>\n";
+ptr += "  </div>\n";
+ptr += "</div>\n";
+
+
     // Modālais logs kP vērtības maiņai
     ptr += "<div id=\"modalKP\" class=\"modal\">\n";
     ptr += "  <div class=\"modal-content\">\n";
@@ -233,6 +256,9 @@ String SendHTML(int temperature) {
     ptr += "</body>\n";
     ptr += "</html>\n";
     return ptr;
+
+
+
 }
 
 
@@ -273,3 +299,80 @@ void handle_GetTargetTemp() {
     server.send(200, "text/html; charset=UTF-8", String(targetTempC));
 }
 
+void handle_SetTemperatureMin() {
+    if (server.hasArg("temperature_min")) {
+        temperatureMin = server.arg("temperature_min").toInt(); // Update temperatureMin based on user input
+    }
+    server.sendHeader("Location", "/"); // Redirect to the main page
+    server.send(303); // Send a 303 response to redirect
+}
+
+void handle_GetTemperatureMin() {
+    server.send(200, "text/html; charset=UTF-8", String(temperatureMin));
+}
+
+void showMenu() {
+    String keyboardJson = "[[{ \"text\": \"🔍 Info\", \"callback_data\": \"/info\" }],"
+                          "[{ \"text\": \"➕  kP\", \"callback_data\": \"/increase_kP\" },"
+                          " { \"text\": \"➖  kP\", \"callback_data\": \"/decrease_kP\" }],"
+                          "[{ \"text\": \"➕  mērķa temp.\", \"callback_data\": \"/increase_targetTemp\" },"
+                          " { \"text\": \"➖  mērķa temp.\", \"callback_data\": \"/decrease_targetTemp\" }],"
+                          "[{ \"text\": \"➕  Min temp.\", \"callback_data\": \"/increase_temperatureMin\" },"
+                          " { \"text\": \"➖  Min temp.\", \"callback_data\": \"/decrease_temperatureMin\" }]]";
+
+    bot.sendMessageWithInlineKeyboard(chatId, "Izvēlies darbību:", "", keyboardJson);
+}
+
+void handleNewMessages(int numNewMessages) {
+    for (int i = 0; i < numNewMessages; i++) {
+        String text = bot.messages[i].text;
+        String from = bot.messages[i].from_name;
+
+
+
+        if (text.startsWith("/info")) {
+            showMenu();
+            String infoMessage = "Pašreizējā temperatūra: " + String(temperature) + " °C\n";
+            infoMessage += "Mērķa temperatūra: " + String(targetTempC) + " °C\n";
+            infoMessage += "Aizbīdņa atvērums: " + String(damper) + " %\n";
+            infoMessage += "kP vērtība: " + String(kP) + " !\n";
+            infoMessage += "Minimālā temperatūra: " + String(temperatureMin) + " °C";
+            bot.sendMessage(chatId, infoMessage);
+        }
+        else if (text == "/increase_kP") {
+            kP += 5;
+            bot.sendMessage(chatId, "kP palielināts: " + String(kP));
+
+        }
+        else if (text == "/decrease_kP") {
+            kP -= 5;
+            bot.sendMessage(chatId, "kP samazināts: " + String(kP));
+
+        }
+
+        else if (text == "/increase_targetTemp") {
+            targetTempC += 2;
+            bot.sendMessage(chatId, "Mērķa temperatūra : " + String(targetTempC));
+
+        }
+        else if (text == "/decrease_targetTemp") {
+            targetTempC -= 2;
+            bot.sendMessage(chatId, "Mērķa temperatūra: " + String(targetTempC));
+
+        }
+
+        else if (text == "/increase_temperatureMin") {
+            temperatureMin += 2;
+            bot.sendMessage(chatId, "Minimālā temperatūra: " + String(temperatureMin));
+
+        }
+        else if (text == "/decrease_temperatureMin") {
+            temperatureMin -= 3;
+            bot.sendMessage(chatId, "Minimālā temperatūra: " + String(temperatureMin));
+
+        }
+        else {
+            bot.sendMessage(chatId, "Unknown command");
+        }
+    }
+}

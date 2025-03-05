@@ -30,5 +30,7 @@
         "unordered_map": "cpp",
         "unordered_set": "cpp",
         "initializer_list": "cpp"
-    }
+    },
+    "CodeGPT.apiKey": "CodeGPT Plus Beta",
+    "deepseek.apiKey": "8365b3b0784c4da7a68682d28805ab9c"
 }

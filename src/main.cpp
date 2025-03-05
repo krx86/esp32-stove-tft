@@ -80,6 +80,9 @@ void setup(void)
     ESP.restart();
   } */
 
+  configTime(0, 0, "pool.ntp.org");
+  secured_client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
+
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
  
@@ -136,6 +139,9 @@ void setup(void)
       server.on("/kP_value", HTTP_GET, []() {
         server.send(200, "text/plain", String(kP)); // Atgriež kP vērtību kā tekstu
     });
+      server.on("/set_temperature_min", handle_SetTemperatureMin);
+      server.on("/temperature_min", handle_GetTemperatureMin);
+
       server.begin();
 
   Serial.println("HTTP server started");
@@ -146,6 +152,7 @@ void setup(void)
 /// @brief 
 void loop() {
 server.handleClient();
+
 
 
 telnet.loop();
@@ -170,7 +177,19 @@ ArduinoOTA.handle();
      // save the last executed time
   //telnet.println("erri:" + String(errI) +" |  " + "temperatura:" + String(temperature) + " | " + "eerrp:" + String(errP));
 
+  if (!setti) // Only check for messages if setti is false
+  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    if (numNewMessages)
+    {
+      handleNewMessages(numNewMessages);
+    }
   }
+ 
+  }
+
+
+  
 
 if (temperature < 2){
   ds.requestTemperatures();
@@ -210,11 +229,14 @@ raw2[0]=pot_raw;
          // read thermocouple temp in C */
 
  
-  if (temperature >90)
+  if (temperature >85)
     { tone(buzzerPort, buzzerRefillFrequency);
     delay(buzzerRefillDelay);
     noTone(buzzerPort);
-    delay(buzzerRefillDelay);}
+    delay(buzzerRefillDelay);
+    bot.sendMessage(chatId, "ESP32 krasns sasniedz " + String(temperature, 1) + " gradus!", "");
+    delay(300);
+  }
            
   
  
@@ -288,10 +310,7 @@ if (suknis == false ){telnet.println("suknis false");}
 
         messageDamp = "Auto"; // set damper output message, auto
 
-        if(temperature>temperatureMin){
-          refillTrigger = 1500;
-          endTrigger = 2500;
-        }
+
         
         //Refill Alarm
         if (errI > refillTrigger) 
@@ -331,145 +350,159 @@ if (suknis == false ){telnet.println("suknis false");}
         }
     }
  
-  
 
-text4.createSprite(130, 40);
-text4.fillSprite(TFT_WHITE);
-  if (kludas > 20)
-    {
-      img.createSprite(200, 200);
-      img.pushImage(0,0,200,200,kluda);
-      text4.setTextColor(TFT_BLACK);
-
-messageDamp = "Error"; 
- 
-  tone(buzzerPort, buzzerRefillFrequency);
-    delay(buzzerRefillDelay);
-    noTone(buzzerPort);
-    delay(buzzerRefillDelay);
- 
-    }  
-else
-  {text4.setTextColor(TFT_BLACK);}
-
-
-    if (oddLoop) 
-    { messageinfo = "Dmp " + String(damper) + "% Pot " + round(pot);} // set alt damper output message
-
-
-  
-  
-  
+    text4.createSprite(130, 40);
+    text4.fillSprite(TFT_WHITE);
+    
+    if (kludas > 20) {
+        // Kļūdu attēlošana
+        img.createSprite(200, 200);
+        img.pushImage(0, 0, 200, 200, kluda);
+        text4.setTextColor(TFT_BLACK);
+    
+        messageDamp = "Error";
+    
+        tone(buzzerPort, buzzerRefillFrequency);
+        delay(buzzerRefillDelay);
+        noTone(buzzerPort);
+        delay(buzzerRefillDelay);
+    } else {
+        text4.setTextColor(TFT_BLACK);
+    }
+    
+    // Pārbauda un pārslēdz "setti" režīmu
     if (pot_raw >= 155 && pot_raw <= 175) {
-  delay(500);
-  setti = !setti;
-  delay(100);
-  tft.fillScreen(TFT_WHITE);
-}
-
-// Button
-if (setti) {
-
-  img2.createSprite(220, 30);
-  img2.fillSprite(TFT_TRANSPARENT);
-  bckg.createSprite(320, 240);
-  //bckg.fillSprite(TFT_WHITE);
-  bckg.pushImage(0, 0, 320, 240, setting);
-  text.createSprite(200, 30);
-  text.fillSprite(TFT_WHITE);
-  text.setTextColor(TFT_BLACK);
-  text5.createSprite(200, 30);
-  text5.fillSprite(TFT_WHITE);
-  text5.setTextColor(TFT_BLACK);
-  text2.createSprite(200, 30);
-  text2.fillSprite(TFT_WHITE);
-  text2.setTextColor(TFT_BLACK);
-  text3.createSprite(200, 30);
-  text3.fillSprite(TFT_WHITE);
-  text3.setTextColor(TFT_BLACK);
-  text5.setFreeFont(FSSB12);
-  text6.createSprite(200, 30);
-  text6.fillSprite(TFT_WHITE);
-  text6.setTextColor(TFT_BLACK);
-  text5.drawString("TargetTemp.  " + String(targetTempC), 0, 0, GFXFF);
-  text5.pushToSprite(&bckg, 120, 10);
-  text2.setFreeFont(FSSB12);
-  text2.drawString("koificients  " + String(kP), 0, 0, GFXFF);
-  text2.pushToSprite(&bckg, 120, 60);
-  text3.setFreeFont(FSSB12);
-  text3.drawString("Max damp.  " + String(maxDamperx), 0, 0, GFXFF);
-  text3.pushToSprite(&bckg, 120, 110);
-  text.setFreeFont(FSSB12);
-  text.drawString("Damper  " + String(pot), 0, 0, GFXFF);
-  text.pushToSprite(&bckg, 120, 160);
-  text6.setFreeFont(FSSB12);
-  if (suknis == false){text6.drawString("Suknis OFF  ", 0, 0, GFXFF);} 
-  if (suknis == true){text6.drawString("Suknis ON  ", 0, 0, GFXFF);}
-  text6.pushToSprite(&bckg, 120, 210);
-  img2.drawRect(0, 0, 200, 30, 10);
-  img2.pushToSprite(&bckg, 116, krx, TFT_TRANSPARENT);
-  bckg.pushSprite(0, 0);
-  text2.unloadFont();
-  text3.unloadFont();
-  text3.unloadFont();
-  text5.unloadFont();
-  text2.deleteSprite();
-  text3.deleteSprite();
-  text4.deleteSprite();
-  img.deleteSprite();
-  img2.deleteSprite();
-  text5.deleteSprite();
-  bckg.deleteSprite();
-  old_setti = setti;
-} else {
-
-  bckg.createSprite(110, 170);
-  bckg.fillSprite(TFT_WHITE);
-  y = 105 - temperature;
-  img2.createSprite(17, y);
-  img2.fillSprite(TFT_WHITE);
-  text.createSprite(195, 85);
-  text.fillSprite(TFT_WHITE);
-  text.setTextWrap(true);
-  text.setTextColor(TFT_RED);
-  text3.createSprite(200, 30);
-  text3.fillSprite(TFT_WHITE);
-  text3.setTextColor(TFT_BLACK);
-  text2.createSprite(100, 50);
-  text2.fillSprite(TFT_WHITE);
-  text2.setTextColor(TFT_BLACK);
-  bckg.pushImage(0, 0, 110, 170, arrow);
-  y = 105 - temperature;
-  img2.fillRect(0, 0, 17, y, TFT_BLACK);
-  img2.pushToSprite(&bckg, 63, 14, TFT_WHITE);
-  bckg.pushSprite(0, 10, TFT_BLACK);
-  text.setFreeFont(&FreeSansBold42pt7b);
-  text.drawString(String(temperature) + " c", 0, 0, GFXFF);
-  text.pushSprite(120, 60);
-  text2.setFreeFont(FF35);
-  text2.drawString(String(damper) + " %", 0, 0, GFXFF);
-  text2.pushSprite(190, 190);
-  text3.drawString(String(targetTempC) + "°c   Target.", 0, 0, 4);
-  text3.pushSprite(120, 20);
-  img.pushSprite(90, 0, TFT_BLACK);
-  text4.setFreeFont(FF23);
-  text4.drawString(messageDamp, 0, 0, GFXFF);
-  text4.pushSprite(20, 188);
-}
-
-text.unloadFont();
-text2.unloadFont();
-text3.unloadFont();
-text5.unloadFont();
-text.deleteSprite();
-text2.deleteSprite();
-text3.deleteSprite();
-text4.deleteSprite();
-img.deleteSprite();
-img2.deleteSprite();
-text5.deleteSprite();
-bckg.deleteSprite();
-   
+        delay(500);
+        setti = !setti;
+        delay(100);
+        tft.fillScreen(TFT_WHITE);
+    }
+    
+    if (setti) {
+      
+        // Iestatījumu ekrāns
+        img2.createSprite(220, 30);
+        img2.fillSprite(TFT_TRANSPARENT);
+    
+        bckg.createSprite(320, 240);
+        bckg.pushImage(0, 0, 320, 240, setting);
+    
+        text.createSprite(200, 30);
+        text.fillSprite(TFT_WHITE);
+        text.setTextColor(TFT_BLACK);
+    
+        text5.createSprite(200, 30);
+        text5.fillSprite(TFT_WHITE);
+        text5.setTextColor(TFT_BLACK);
+    
+        text2.createSprite(200, 30);
+        text2.fillSprite(TFT_WHITE);
+        text2.setTextColor(TFT_BLACK);
+    
+        text3.createSprite(200, 30);
+        text3.fillSprite(TFT_WHITE);
+        text3.setTextColor(TFT_BLACK);
+    
+        // Zīmē tekstus
+        text5.setFreeFont(FSSB12);
+        text5.drawString("TargetTemp.  " + String(targetTempC), 0, 0, GFXFF);
+        text5.pushToSprite(&bckg, 120, 10);
+    
+        text2.setFreeFont(FSSB12);
+        text2.drawString("koificients  " + String(kP), 0, 0, GFXFF);
+        text2.pushToSprite(&bckg, 120, 60);
+    
+        text3.setFreeFont(FSSB12);
+        text3.drawString("Min. temp  " + String(temperatureMin), 0, 0, GFXFF);
+        text3.pushToSprite(&bckg, 120, 110);
+    
+        text.setFreeFont(FSSB12);
+        text.drawString("refillTrigger  " + String(refillTrigger), 0, 0, GFXFF);
+        text.pushToSprite(&bckg, 120, 160);
+    
+        text6.createSprite(200, 30);
+        text6.fillSprite(TFT_WHITE);
+        text6.setTextColor(TFT_BLACK);
+        text6.setFreeFont(FSSB12);
+    
+        if (suknis == false) {
+            text6.drawString("Suknis OFF  ", 0, 0, GFXFF);
+        } else {
+            text6.drawString("Suknis ON  ", 0, 0, GFXFF);
+        }
+        text6.pushToSprite(&bckg, 120, 210);
+    
+        img2.drawRect(0, 0, 200, 30, 10);
+        img2.pushToSprite(&bckg, 116, krx, TFT_TRANSPARENT);
+        bckg.pushSprite(0, 0);
+    
+        // Atbrīvo resursus
+        text2.unloadFont();
+        text3.unloadFont();
+        text5.unloadFont();
+        text2.deleteSprite();
+        text3.deleteSprite();
+        text4.deleteSprite();
+        img.deleteSprite();
+        img2.deleteSprite();
+        text5.deleteSprite();
+        bckg.deleteSprite();
+        old_setti = setti;
+    } else {
+        // Noklusējuma ekrāns
+        bckg.createSprite(110, 170);
+        bckg.fillSprite(TFT_WHITE);
+    
+        int y = 105 - temperature;
+        img2.createSprite(17, y);
+        img2.fillSprite(TFT_WHITE);
+    
+        text.createSprite(195, 85);
+        text.fillSprite(TFT_WHITE);
+        text.setTextWrap(true);
+        text.setTextColor(TFT_RED);
+    
+        text3.createSprite(200, 30);
+        text3.fillSprite(TFT_WHITE);
+        text3.setTextColor(TFT_BLACK);
+    
+        text2.createSprite(100, 50);
+        text2.fillSprite(TFT_WHITE);
+        text2.setTextColor(TFT_BLACK);
+    
+        bckg.pushImage(0, 0, 110, 170, arrow);
+    
+        img2.fillRect(0, 0, 17, y, TFT_BLACK);
+        img2.pushToSprite(&bckg, 63, 14, TFT_WHITE);
+    
+        bckg.pushSprite(0, 10, TFT_BLACK);
+    
+        text.setFreeFont(&FreeSansBold42pt7b);
+        text.drawString(String(temperature) + " c", 0, 0, GFXFF);
+        text.pushSprite(120, 60);
+    
+        text2.setFreeFont(FF35);
+        text2.drawString(String(damper) + " %", 0, 0, GFXFF);
+        text2.pushSprite(190, 190);
+    
+        text3.drawString(String(targetTempC) + "°c   Target.", 0, 0, 4);
+        text3.pushSprite(120, 20);
+    
+        img.pushSprite(90, 0, TFT_BLACK);
+    
+        text4.setFreeFont(FF23);
+        text4.drawString(messageDamp, 0, 0, GFXFF);
+        text4.pushSprite(20, 188);
+    
+        // Atbrīvo resursus
+        text.deleteSprite();
+        text2.deleteSprite();
+        text3.deleteSprite();
+        text4.deleteSprite();
+        img.deleteSprite();
+        img2.deleteSprite();
+        bckg.deleteSprite();
+    }
  
 
     // Drive servo and print damper position to the lcd

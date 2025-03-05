@@ -11,8 +11,8 @@ extern int krx6;
 extern int krx56;
 extern int krx156;
 extern int targetTempC;
-extern int maxDamperx;
+extern int temperatureMin;
 extern bool suknis;
-
+extern float refillTrigger;
 
 void pogas ();
