@@ -32,7 +32,7 @@ WebServer server(80);
 
 
 
-OneWire oneWire(6);
+OneWire oneWire(6); // temp pin balts
 DallasTemperature ds(&oneWire);
 DeviceAddress sensor1 = {0x28, 0xFC, 0x70, 0x96, 0xF0, 0x01, 0x3C, 0xC0};
 
@@ -63,8 +63,8 @@ int buzzerEndDelay = 200;        // Delay of tone for end of fire damper close a
 byte E;
 
 // Potentiometer variables
-int servoPort = 5;
-int potPort = A3;
+int servoPort = 5;   // servo pin dzeltens
+int potPort = A3;    // button pin    
 
 // Device objects - create servo, therocouple, and lcd objects
 Servo myservo;
