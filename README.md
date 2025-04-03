@@ -49,3 +49,11 @@ GitHub Repozitorijs: esp32-stove-tft
 
 Kontakti: Lai saņemtu palīdzību vai sniegtu atsauksmes, lūdzu, sazinieties ar projekta autoru caur GitHub.
 
+int servoPort = 5;   // servo pin dzeltens
+OneWire oneWire(6); // temp pin balts
+touch1 = 4;
+touch2 = 1;
+touch3 = 2;
+relay = 17; // zals
+
+
