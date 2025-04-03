@@ -55,5 +55,7 @@ touch1 = 4;
 touch2 = 1;
 touch3 = 2;
 relay = 17; // zals
+buzzer = 14;
+
 
 
